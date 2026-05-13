@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Control de Actividades Pendientes</title>
+<link rel="stylesheet" href="estilos/styles.css">
+</head>
+<body>
+
+<!-- ══ LOGIN ══ -->
+<div id="screen-login">
+  <div class="lcard">
+    <div class="llogo">📋</div>
+    <div class="ltitle">Control de Actividades</div>
+
+    <div class="lerr" id="login-err"></div>
+
+    <div class="lfield">
+      <label>Usuario</label>
+      <input type="text" id="login-user" placeholder="Ingresa tu usuario"/>
+    </div>
+
+    <div class="lfield">
+      <label>Contraseña</label>
+      <input type="password" id="login-pass" placeholder="" 
+             onkeydown="if(event.key==='Enter')doLogin()"/>
+    </div>
+
+    <button class="lbtn" onclick="doLogin()">Ingresar</button>
+    <span class="forgot-link" onclick="showForgot()"> Olvide mi contraseña</span>
+  </div>
+</div>
+
+<!-- ══ FORGOT PASSWORD ══ -->
+<div id="screen-forgot">
+  <div class="pcard">
+    <h2>🔑 Nueva Contraseña</h2>
+    <p>Escribe tu usuario y el código de recuperación que te dio el administrador.</p>
+
+    <div class="pmsg" id="forgot-msg"></div>
+
+    <div class="lfield">
+      <label>Usuario</label>
+      <input type="text" id="forgot-user" placeholder="Ingresa tu usuario"/>
+    </div>
+    <div class="lfield">
+      <label>Código de recuperación</label>
+      <input id="forgot-code" placeholder="*****" maxlength="6"/>
+    </div>
+    <div class="lfield" id="forgot-newpass-row" style="display:none">
+      <label>Nueva contraseña</label>
+      <input type="password" id="forgot-newpass" placeholder="Nueva contraseña"/>
+    </div>
+    <button class="lbtn" onclick="doForgot()">Cambiar</button>
+    <span class="back-link" onclick="showLogin()">← Volver al inicio de sesión</span>
+  </div>
+</div>
+
+<!-- ══ APP ══ -->
+<div id="screen-app">
+  <div class="hdr">
+    <span style="font-size:19px">📋</span>
+    <span class="hdr-title">Control de Actividades Pendientes</span>
+    <span class="user-name" id="hdr-user">—</span>
+    <button class="hdr-btn" onclick="showChangePwd()">🔒 Cambiar contraseña</button>
+    <button class="hdr-btn" id="btn-users" onclick="openUsersPanel()" style="display:none">👥 Usuarios</button>
+    <button class="hdr-btn" onclick="refreshApp()">🔄 Actualizar</button> <!-- 👈 nuevo botón -->
+    <button class="hdr-btn" onclick="doLogout()">Salir</button>
+  </div>
+  <div class="tbar">
+    <button class="add-btn" id="add-btn" onclick="openModal()" style="display:none">＋ Agregar tarea</button>
+    <input class="sbox" id="sbox" placeholder="🔍 Buscar tarea o persona..." oninput="renderBoard()"/>
+    <span class="cinfo" id="cinfo"></span>
+  </div>
+  <div class="board" id="board"></div>
+</div>
+
+<!-- ══ CHANGE PASSWORD (inline panel) ══ -->
+<div class="mbg" id="mbg-changepwd" onclick="if(event.target===this)this.classList.remove('open')">
+  <div class="modal" style="width:360px">
+    <h3>🔒 Cambiar contraseña</h3>
+    <div class="pmsg" id="chpwd-msg"></div>
+    <div class="fr"><label>Contraseña actual</label><input type="password" id="cp-actual" placeholder="••••••••"/></div>
+    <div class="fr"><label>Nueva contraseña</label><input type="password" id="cp-nueva" placeholder="••••••••"/></div>
+    <div class="fr"><label>Confirmar nueva contraseña</label><input type="password" id="cp-confirm" placeholder="••••••••"/></div>
+    <div class="mbtns">
+      <button class="bc" onclick="document.getElementById('mbg-changepwd').classList.remove('open')">Cancelar</button>
+      <button class="bs" onclick="doChangePwd()">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ TASK MODAL ══ -->
+<div class="mbg" id="mbg-task" onclick="closeMbg(event)">
+  <div class="modal">
+    <h3 id="mtitle">Nueva tarea</h3>
+    <input type="hidden" id="mid"/>
+    <div class="fr"><label>Tarea *</label><input id="ft" placeholder="Nombre de la tarea"/></div>
+    <div class="fr"><label>Descripción</label><textarea id="fd" placeholder="Detalle..."></textarea></div>
+    <div class="fr"><label>Asignado a</label>
+      <select id="fa"><option value="">— Sin asignar —</option></select>
+    </div>
+    <div class="fr" id="row-est" style="display:none"><label>Estado</label>
+<select id="fe" onchange="chkEspera()">
+  <option>Pendiente</option>
+  <option>Asignada</option>
+  <option>En proceso</option>
+  <option>En espera</option>
+  <option>Validación</option>
+  <option>Terminado</option>
+  <option>Cancelada</option>
+</select>
+    </div>
+    <div class="fr" id="row-esp" style="display:none"><label>Motivo de espera *</label>
+      <input id="fes" placeholder="¿Por qué está en espera?"/>
+    </div>
+    <div class="fr"><label>Observaciones</label><textarea id="fo" placeholder="Notas..."></textarea></div>
+    <div class="fr"><label>Link de evidencias</label><input id="fl" placeholder="https://..."/></div>
+    <div class="mbtns">
+      <button class="bc" onclick="closeTaskModal()">Cancelar</button>
+      <button class="bs" onclick="saveTask()">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ USERS PANEL MODAL ══ -->
+<div class="mbg" id="mbg-users" onclick="if(event.target===this)this.classList.remove('open')">
+  <div class="modal" style="width:560px">
+    <h3>👥 Gestión de usuarios</h3>
+    <p style="font-size:12px;color:var(--texto2);margin-bottom:.5rem">Haz clic en "Editar" para cambiar el nombre, contraseña o rol de un usuario.</p>
+    <div style="max-height:420px;overflow-y:auto">
+      <table class="up-table" id="users-table"></table>
+    </div>
+    <div class="mbtns"><button class="bc" onclick="document.getElementById('mbg-users').classList.remove('open')">Cerrar</button></div>
+  </div>
+</div>
+
+<!-- ══ EDIT USER MODAL ══ -->
+<div class="mbg" id="mbg-edituser" onclick="if(event.target===this)this.classList.remove('open')">
+  <div class="modal" style="width:360px">
+    <h3 id="eu-title">Editar usuario</h3>
+    <input type="hidden" id="eu-id"/>
+    <div class="fr"><label>Nombre completo</label><input id="eu-nombre" placeholder="Nombre"/></div>
+    <div class="fr"><label>Nueva contraseña (dejar vacío para no cambiar)</label>
+      <input type="password" id="eu-pass" placeholder="••••••••"/></div>
+
+
+      <div class="fr"><label>Rol</label>
+  <select id="eu-rol">
+    <option value="Ingeniero">Ingeniero</option>
+    <option value="Gerente">Gerente</option>
+  </select>
+</div>
+
+
+    <div class="fr"><label>Código de recuperación (6 dígitos)</label>
+      <input id="eu-code" placeholder="ej: 123456" maxlength="6"/>
+    </div>
+    <div class="mbtns">
+      <button class="bc" onclick="document.getElementById('mbg-edituser').classList.remove('open')">Cancelar</button>
+      <button class="bs" onclick="saveEditUser()">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<script src="scripts/app.js"></script>
+</body>
+</html>

@@ -1,284 +1,3 @@
-<!DOCTYPE html>
-<html lang="es">
-<head>
-<meta charset="UTF-8"/>
-<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>Control de Actividades Pendientes</title>
-<style>
-:root{
-  --azul:#1a3a5c;--azul2:#2d6a9f;--fondo:#eef2f7;--borde:#dde3ec;
-  --texto:#1a2535;--texto2:#6b7a90;
-  --c1:#e3f2fd;--c1t:#185fa5;
-  --c2:#fff3e0;--c2t:#854f0b;
-  --c3:#fce4ec;--c3t:#993556;
-  --c4:#f3e5f5;--c4t:#7b1fa2;
-  --c5:#e8f5e9;--c5t:#2e7d32;
-}
-*{box-sizing:border-box;margin:0;padding:0}
-body{font-family:'Segoe UI',system-ui,sans-serif;background:var(--fondo);color:var(--texto);font-size:14px;height:100vh;overflow:hidden}
-
-/* ── LOGIN ── */
-#screen-login{position:fixed;inset:0;background:linear-gradient(135deg,#1a3a5c,#2d6a9f);display:flex;align-items:center;justify-content:center;z-index:1000}
-.lcard{background:#fff;border-radius:18px;padding:2.2rem 2rem;width:340px;box-shadow:0 24px 64px rgba(0,0,0,.28)}
-.llogo{width:58px;height:58px;background:var(--azul);border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 1rem;font-size:26px;color:#fff}
-.ltitle{font-size:19px;font-weight:700;text-align:center;margin-bottom:.2rem}
-.lsub{font-size:12px;color:var(--texto2);text-align:center;margin-bottom:1.5rem}
-.lfield{margin-bottom:.8rem}
-.lfield label{display:block;font-size:11px;font-weight:700;color:var(--texto2);margin-bottom:3px;text-transform:uppercase;letter-spacing:.4px}
-.lfield input,.lfield select{width:100%;border:1px solid var(--borde);border-radius:8px;padding:8px 11px;font-size:13px;background:#f8fafc;color:var(--texto);font-family:inherit}
-.lfield input:focus,.lfield select:focus{outline:none;border-color:var(--azul2);background:#fff}
-.lerr{font-size:12px;color:#c62828;background:#fce4ec;padding:6px 10px;border-radius:7px;margin-bottom:.8rem;display:none}
-.lbtn{width:100%;background:var(--azul);color:#fff;border:none;border-radius:9px;padding:9px;font-size:14px;font-weight:700;cursor:pointer;margin-top:.3rem;transition:background .15s}
-.lbtn:hover{background:var(--azul2)}
-.forgot-link{display:block;text-align:center;margin-top:.9rem;font-size:12px;color:var(--azul2);cursor:pointer;text-decoration:underline}
-.forgot-link:hover{color:var(--azul)}
-
-/* ── FORGOT / CHANGE PASSWORD SCREENS ── */
-#screen-forgot,#screen-change{position:fixed;inset:0;background:linear-gradient(135deg,#1a3a5c,#2d6a9f);display:none;align-items:center;justify-content:center;z-index:1000}
-.pcard{background:#fff;border-radius:18px;padding:2rem;width:340px;box-shadow:0 24px 64px rgba(0,0,0,.28)}
-.pcard h2{font-size:17px;font-weight:700;color:var(--azul);margin-bottom:.3rem}
-.pcard p{font-size:12px;color:var(--texto2);margin-bottom:1.2rem}
-.pmsg{font-size:13px;padding:8px 11px;border-radius:8px;margin-bottom:.8rem;display:none}
-.pmsg.ok{background:var(--c5);color:var(--c5t)}
-.pmsg.err{background:var(--c3);color:var(--c3t)}
-.back-link{display:block;text-align:center;margin-top:.8rem;font-size:12px;color:var(--azul2);cursor:pointer;text-decoration:underline}
-
-/* ── APP ── */
-#screen-app{display:none;flex-direction:column;height:100vh}
-.hdr{background:var(--azul);color:#fff;padding:.6rem 1.1rem;display:flex;align-items:center;gap:10px;flex-shrink:0}
-.hdr-title{font-size:14px;font-weight:700;flex:1}
-.user-name{font-size:13px;font-weight:600;opacity:.9}
-.hdr-btn{background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.28);color:#fff;padding:4px 12px;border-radius:7px;cursor:pointer;font-size:12px;white-space:nowrap}
-.hdr-btn:hover{background:rgba(255,255,255,.28)}
-
-.tbar{background:#fff;border-bottom:1px solid var(--borde);padding:.45rem 1rem;display:flex;align-items:center;gap:8px;flex-shrink:0;flex-wrap:wrap}
-.add-btn{background:var(--azul);color:#fff;border:none;padding:6px 14px;border-radius:8px;cursor:pointer;font-size:13px;font-weight:600;display:flex;align-items:center;gap:5px}
-.add-btn:hover{background:var(--azul2)}
-.sbox{border:1px solid var(--borde);border-radius:8px;padding:5px 11px;font-size:13px;width:190px;background:#f8fafc;color:var(--texto)}
-.sbox:focus{outline:none;border-color:var(--azul2)}
-.cinfo{font-size:12px;color:var(--texto2);margin-left:auto}
-
-/* ── KANBAN ── */
-.board{display:flex;gap:13px;padding:13px;overflow-x:auto;flex:1;align-items:flex-start}
-.col{background:#e2e8f0;border-radius:12px;width:250px;min-width:250px;display:flex;flex-direction:column;max-height:calc(100vh - 102px)}
-.col-hdr{padding:9px 12px;border-radius:12px 12px 0 0;display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
-.col-name{font-size:13px;font-weight:700}
-.col-count{font-size:11px;font-weight:700;padding:2px 8px;border-radius:20px;background:rgba(0,0,0,.12)}
-.col-body{padding:7px;display:flex;flex-direction:column;gap:7px;overflow-y:auto;flex:1;min-height:60px;border-radius:0 0 12px 12px;transition:background .15s}
-.col-body.dragover{background:#c8d6e8;outline:2px dashed var(--azul2);outline-offset:-4px}
-.col-pendiente .col-hdr{background:var(--c1);color:var(--c1t)}
-.col-proceso   .col-hdr{background:var(--c2);color:var(--c2t)}
-.col-espera    .col-hdr{background:var(--c3);color:var(--c3t)}
-.col-revision  .col-hdr{background:var(--c4);color:var(--c4t)}
-.col-terminado .col-hdr{background:var(--c5);color:var(--c5t)}
-
-/* ── CARD ── */
-.card{background:#fff;border-radius:9px;padding:10px 12px;box-shadow:0 1px 4px rgba(0,0,0,.08);cursor:grab;transition:box-shadow .15s,transform .15s;user-select:none}
-.card:hover{box-shadow:0 4px 14px rgba(0,0,0,.13);transform:translateY(-1px)}
-.card.dragging{opacity:.35;transform:scale(.96);cursor:grabbing}
-.card-title{font-size:13px;font-weight:700;margin-bottom:4px}
-.card-desc{font-size:12px;color:var(--texto2);margin-bottom:6px;line-height:1.4;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
-.card-meta{display:flex;flex-wrap:wrap;gap:4px;align-items:center}
-.chip{font-size:11px;padding:2px 7px;border-radius:12px;font-weight:600;white-space:nowrap}
-.chip-asig{background:#e8f0fe;color:#3c5a9a}
-.d-ok{background:var(--c5);color:var(--c5t)}
-.d-warn{background:var(--c2);color:var(--c2t)}
-.d-alert{background:var(--c3);color:var(--c3t)}
-.espera-note{font-size:11px;color:var(--c3t);background:var(--c3);padding:3px 8px;border-radius:6px;margin-top:5px;line-height:1.4}
-.card-actions{display:flex;gap:3px;margin-top:7px;padding-top:6px;border-top:1px solid #f0f0f0}
-.ca-btn{background:none;border:none;cursor:pointer;padding:3px 7px;border-radius:5px;font-size:12px;color:var(--texto2)}
-.ca-btn:hover{background:#e3f2fd;color:var(--azul)}
-.ca-btn.del:hover{background:#fce4ec;color:#c62828}
-
-/* ── MODAL ── */
-.mbg{display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:300;align-items:center;justify-content:center}
-.mbg.open{display:flex}
-.modal{background:#fff;border-radius:14px;padding:1.6rem;width:480px;max-height:92vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,.22)}
-.modal h3{font-size:16px;font-weight:700;margin-bottom:1.1rem;color:var(--azul)}
-.fr{margin-bottom:.75rem}
-.fr label{display:block;font-size:11px;font-weight:700;color:var(--texto2);margin-bottom:3px;text-transform:uppercase;letter-spacing:.4px}
-.fr input,.fr textarea,.fr select{width:100%;border:1px solid var(--borde);border-radius:8px;padding:7px 11px;font-size:13px;background:#f8fafc;color:var(--texto);font-family:inherit}
-.fr input:focus,.fr textarea:focus,.fr select:focus{outline:none;border-color:var(--azul2);background:#fff}
-.fr textarea{resize:vertical;min-height:58px}
-.mbtns{display:flex;gap:8px;justify-content:flex-end;margin-top:1rem;padding-top:.9rem;border-top:1px solid var(--borde)}
-.bc{background:#f8fafc;border:1px solid var(--borde);border-radius:8px;padding:6px 14px;cursor:pointer;font-size:13px;font-weight:600;color:var(--texto2)}
-.bc:hover{background:#eee}
-.bs{background:var(--azul);color:#fff;border:none;border-radius:8px;padding:6px 18px;cursor:pointer;font-size:13px;font-weight:600}
-.bs:hover{background:var(--azul2)}
-
-/* ── USERS PANEL ── */
-.up-table{width:100%;border-collapse:collapse;margin-top:.8rem}
-.up-table th{background:var(--azul);color:#fff;font-size:12px;padding:7px 10px;text-align:left}
-.up-table td{padding:6px 10px;border-bottom:1px solid var(--borde);font-size:13px}
-.up-table tr:nth-child(even) td{background:#f8fafc}
-.up-badge{display:inline-block;padding:2px 8px;border-radius:12px;font-size:11px;font-weight:700}
-.up-g{background:var(--c1);color:var(--c1t)}
-.up-i{background:var(--c5);color:var(--c5t)}
-
-::-webkit-scrollbar{width:6px;height:6px}
-::-webkit-scrollbar-track{background:#f1f1f1;border-radius:3px}
-::-webkit-scrollbar-thumb{background:#b0bec5;border-radius:3px}
-</style>
-</head>
-<body>
-
-<!-- ══ LOGIN ══ -->
-<div id="screen-login">
-  <div class="lcard">
-    <div class="llogo">📋</div>
-    <div class="ltitle">Control de Actividades</div>
-
-    <div class="lerr" id="login-err"></div>
-
-    <div class="lfield">
-      <label>Usuario</label>
-      <input type="text" id="login-user" placeholder="Ingresa tu usuario"/>
-    </div>
-
-    <div class="lfield">
-      <label>Contraseña</label>
-      <input type="password" id="login-pass" placeholder="" 
-             onkeydown="if(event.key==='Enter')doLogin()"/>
-    </div>
-
-    <button class="lbtn" onclick="doLogin()">Ingresar</button>
-    <span class="forgot-link" onclick="showForgot()"> Olvide mi contraseña</span>
-  </div>
-</div>
-
-<!-- ══ FORGOT PASSWORD ══ -->
-<div id="screen-forgot">
-  <div class="pcard">
-    <h2>🔑 Nueva Contraseña</h2>
-    <p>Escribe tu usuario y el código de recuperación que te dio el administrador.</p>
-
-    <div class="pmsg" id="forgot-msg"></div>
-
-    <div class="lfield">
-      <label>Usuario</label>
-      <input type="text" id="forgot-user" placeholder="Ingresa tu usuario"/>
-    </div>
-    <div class="lfield">
-      <label>Código de recuperación</label>
-      <input id="forgot-code" placeholder="*****" maxlength="6"/>
-    </div>
-    <div class="lfield" id="forgot-newpass-row" style="display:none">
-      <label>Nueva contraseña</label>
-      <input type="password" id="forgot-newpass" placeholder="Nueva contraseña"/>
-    </div>
-    <button class="lbtn" onclick="doForgot()">Cambiar</button>
-    <span class="back-link" onclick="showLogin()">← Volver al inicio de sesión</span>
-  </div>
-</div>
-
-<!-- ══ APP ══ -->
-<div id="screen-app">
-  <div class="hdr">
-    <span style="font-size:19px">📋</span>
-    <span class="hdr-title">Control de Actividades Pendientes</span>
-    <span class="user-name" id="hdr-user">—</span>
-    <button class="hdr-btn" onclick="showChangePwd()">🔒 Cambiar contraseña</button>
-    <button class="hdr-btn" id="btn-users" onclick="openUsersPanel()" style="display:none">👥 Usuarios</button>
-    <button class="hdr-btn" onclick="refreshApp()">🔄 Actualizar</button> <!-- 👈 nuevo botón -->
-    <button class="hdr-btn" onclick="doLogout()">Salir</button>
-  </div>
-  <div class="tbar">
-    <button class="add-btn" id="add-btn" onclick="openModal()" style="display:none">＋ Agregar tarea</button>
-    <input class="sbox" id="sbox" placeholder="🔍 Buscar tarea o persona..." oninput="renderBoard()"/>
-    <span class="cinfo" id="cinfo"></span>
-  </div>
-  <div class="board" id="board"></div>
-</div>
-
-<!-- ══ CHANGE PASSWORD (inline panel) ══ -->
-<div class="mbg" id="mbg-changepwd" onclick="if(event.target===this)this.classList.remove('open')">
-  <div class="modal" style="width:360px">
-    <h3>🔒 Cambiar contraseña</h3>
-    <div class="pmsg" id="chpwd-msg"></div>
-    <div class="fr"><label>Contraseña actual</label><input type="password" id="cp-actual" placeholder="••••••••"/></div>
-    <div class="fr"><label>Nueva contraseña</label><input type="password" id="cp-nueva" placeholder="••••••••"/></div>
-    <div class="fr"><label>Confirmar nueva contraseña</label><input type="password" id="cp-confirm" placeholder="••••••••"/></div>
-    <div class="mbtns">
-      <button class="bc" onclick="document.getElementById('mbg-changepwd').classList.remove('open')">Cancelar</button>
-      <button class="bs" onclick="doChangePwd()">Guardar</button>
-    </div>
-  </div>
-</div>
-
-<!-- ══ TASK MODAL ══ -->
-<div class="mbg" id="mbg-task" onclick="closeMbg(event)">
-  <div class="modal">
-    <h3 id="mtitle">Nueva tarea</h3>
-    <input type="hidden" id="mid"/>
-    <div class="fr"><label>Tarea *</label><input id="ft" placeholder="Nombre de la tarea"/></div>
-    <div class="fr"><label>Descripción</label><textarea id="fd" placeholder="Detalle..."></textarea></div>
-    <div class="fr"><label>Asignado a</label>
-      <select id="fa"><option value="">— Sin asignar —</option></select>
-    </div>
-    <div class="fr" id="row-est" style="display:none"><label>Estado</label>
-<select id="fe" onchange="chkEspera()">
-  <option>Pendiente</option>
-  <option>Asignada</option>
-  <option>En proceso</option>
-  <option>En espera</option>
-  <option>Validación</option>
-  <option>Terminado</option>
-  <option>Cancelada</option>
-</select>
-    </div>
-    <div class="fr" id="row-esp" style="display:none"><label>Motivo de espera *</label>
-      <input id="fes" placeholder="¿Por qué está en espera?"/>
-    </div>
-    <div class="fr"><label>Observaciones</label><textarea id="fo" placeholder="Notas..."></textarea></div>
-    <div class="fr"><label>Link de evidencias</label><input id="fl" placeholder="https://..."/></div>
-    <div class="mbtns">
-      <button class="bc" onclick="closeTaskModal()">Cancelar</button>
-      <button class="bs" onclick="saveTask()">Guardar</button>
-    </div>
-  </div>
-</div>
-
-<!-- ══ USERS PANEL MODAL ══ -->
-<div class="mbg" id="mbg-users" onclick="if(event.target===this)this.classList.remove('open')">
-  <div class="modal" style="width:560px">
-    <h3>👥 Gestión de usuarios</h3>
-    <p style="font-size:12px;color:var(--texto2);margin-bottom:.5rem">Haz clic en "Editar" para cambiar el nombre, contraseña o rol de un usuario.</p>
-    <div style="max-height:420px;overflow-y:auto">
-      <table class="up-table" id="users-table"></table>
-    </div>
-    <div class="mbtns"><button class="bc" onclick="document.getElementById('mbg-users').classList.remove('open')">Cerrar</button></div>
-  </div>
-</div>
-
-<!-- ══ EDIT USER MODAL ══ -->
-<div class="mbg" id="mbg-edituser" onclick="if(event.target===this)this.classList.remove('open')">
-  <div class="modal" style="width:360px">
-    <h3 id="eu-title">Editar usuario</h3>
-    <input type="hidden" id="eu-id"/>
-    <div class="fr"><label>Nombre completo</label><input id="eu-nombre" placeholder="Nombre"/></div>
-    <div class="fr"><label>Nueva contraseña (dejar vacío para no cambiar)</label>
-      <input type="password" id="eu-pass" placeholder="••••••••"/></div>
-
-
-      <div class="fr"><label>Rol</label>
-  <select id="eu-rol">
-    <option value="Ingeniero">Ingeniero</option>
-    <option value="Gerente">Gerente</option>
-  </select>
-</div>
-
-
-    <div class="fr"><label>Código de recuperación (6 dígitos)</label>
-      <input id="eu-code" placeholder="ej: 123456" maxlength="6"/>
-    </div>
-    <div class="mbtns">
-      <button class="bc" onclick="document.getElementById('mbg-edituser').classList.remove('open')">Cancelar</button>
-      <button class="bs" onclick="saveEditUser()">Guardar</button>
-    </div>
-  </div>
-</div>
-
-<script>
 /* ══════════ DATOS INICIALES ══════════ */
 const DEFAULT_USERS = [
   {id:1, usuario:"admin",  nombre:"Augusto Melo",pass:"admin123",  rol:"Gerente",   code:"000000"},
@@ -459,9 +178,6 @@ function refreshApp(){
 
 
 
-
-
-
 let forgotVerified = false;
 
 function doForgot(){
@@ -497,7 +213,6 @@ if(np.length < 4){
   showMsg(msg,'err','La contraseña debe tener al menos 4 caracteres.');
   return;
 }
-
   //Actualizar contraseña
   users = users.map(x => x.usuario.toLowerCase() === usuario ? {...x, pass: np} : x)
   saveUsers();
@@ -606,7 +321,9 @@ function renderBoard(){
 
       const diasHtml=d!==null?`<span class="chip ${dCls(d)}">${d}d</span>`:`<span class="chip d-ok">✓</span>`;
       const espHtml=t.esp?`<div class="espera-note">⏸ ${esc(t.esp)}</div>`:'';
+
       const delBtn=currentUser&&currentUser.rol==='Gerente'?`<button class="ca-btn del" onclick="delTask(${t.id})">🗑</button>`:'';
+
       const card=document.createElement('div');
       card.className='card';card.draggable=true;card.dataset.id=t.id;
       card.innerHTML=`
@@ -644,7 +361,7 @@ function renderBoard(){
   ${delBtn}
 
 </div>
- `; 
+ `;
       card.addEventListener('dragstart',e=>{dragId=t.id;setTimeout(()=>card.classList.add('dragging'),0);e.dataTransfer.effectAllowed='move'});
       card.addEventListener('dragend',()=>card.classList.remove('dragging'));
       body.appendChild(card);
@@ -718,8 +435,17 @@ function showMsg(el,type,text){
   el.style.display='block';
 }
 
+function cambiarEstado(id, nuevoEstado) {
+  tasks = tasks.map(t => {
+    if (t.id !== id) return t;
+    let fc = t.fc;
+    if (nuevoEstado === 'Terminado' && !fc) fc = today();
+    if (nuevoEstado !== 'Terminado') fc = '';
+    return { ...t, estado: nuevoEstado, fc };
+  });
+  saveTasks();
+  renderBoard();
+}
+
 init();
 showLogin();
-</script>
-</body>
-</html>
