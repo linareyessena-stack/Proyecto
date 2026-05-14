@@ -1,42 +1,4 @@
 /* ══════════ DATOS INICIALES ══════════ */
-const DEFAULT_USERS = [
-  {id:1, usuario:"admin",  nombre:"Augusto Melo",pass:"admin123",  rol:"Gerente",   code:"000000"},
-  {id:2, usuario:"ana", nombre:"Ana Rodríguez", pass:"ana123", rol:"Ingeniero", code:"100001"},
-  {id:3, usuario:"carlos",nombre:"Carlos Martínez", pass:"carlos123", rol:"Ingeniero", code:"100002"},
-  {id:4, usuario:"laura",nombre:"Laura Pérez",  pass:"laura123",  rol:"Ingeniero", code:"100003"},
-  {id:5, usuario:"andrés",nombre:"Andrés Ramírez",  pass:"andres123", rol:"Ingeniero", code:"100004"},
-  {id:6, usuario:"maría",nombre:"María Torres",   pass:"maria123",  rol:"Ingeniero", code:"100005"},
-  {id:7, usuario:"felipe", nombre:"Felipe Gómez",  pass:"felipe123", rol:"Ingeniero", code:"100006"},
-  {id:8, usuario:"sofía",nombre:"Sofía Vargas",  pass:"sofia123",  rol:"Ingeniero", code:"100007"},
-  {id:9, usuario:"diego",nombre:"Diego Castillo",pass:"diego123",  rol:"Ingeniero", code:"100008"},
-  {id:10,usuario:"valentina",nombre:"Valentina Cruz", pass:"vale123",   rol:"Ingeniero", code:"100009"},
-  {id:11,usuario:"sebastián",nombre:"Sebastián Mora", pass:"sebas123",  rol:"Ingeniero", code:"100010"},
-  {id:12,usuario:"camila",nombre:"Camila Herrera",  pass:"cami123",   rol:"Ingeniero", code:"100011"},
-  {id:13,usuario:"juan",nombre:"Juan Salcedo",  pass:"juan123",   rol:"Ingeniero", code:"100012"},
-  {id:14,usuario:"natalia",nombre:"Natalia Ospina",  pass:"nata123",   rol:"Ingeniero", code:"100013"},
-  {id:15,usuario:"mateo",nombre:"Mateo Jiménez",  pass:"mateo123",  rol:"Ingeniero", code:"100014"},
-  {id:16,usuario:"isabella",nombre:"Isabella Sánchez", pass:"isa123",    rol:"Ingeniero", code:"100015"},
-  {id:17,usuario:"alejandro",nombre:"Alejandro Ríos",  pass:"alex123",   rol:"Ingeniero", code:"100016"},
-  {id:18,usuario:"daniela",nombre:"Daniela Mendoza",  pass:"dani123",   rol:"Ingeniero", code:"100017"},
-  {id:19,usuario:"nicolás",nombre:"Nicolás Guerrero",   pass:"nico123",   rol:"Ingeniero", code:"100018"},
-  {id:20,usuario:"paula",nombre:"Paula Montoya",   pass:"paula123",  rol:"Ingeniero", code:"100019"},
-  {id:21,usuario:"ricardo",nombre:"Ricardo Parra", pass:"ricardo123",rol:"Ingeniero", code:"100020"},
-  {id:22,usuario:"manuela",nombre:"Manuela Cardona",  pass:"manu123",   rol:"Ingeniero", code:"100021"},
-  {id:23,usuario:"esteban",nombre:"Esteban Aguilar",  pass:"este123",   rol:"Ingeniero", code:"100022"},
-  {id:24,usuario:"lina",nombre:"Lina Rincón",  pass:"lina123",   rol:"Ingeniero", code:"100023"},
-  {id:25,usuario:"julián",nombre:"Julián Cárdenas", pass:"julian123", rol:"Ingeniero", code:"100024"},
-  {id:26,usuario:"sara",nombre:"Sara Pineda",  pass:"sara123",   rol:"Ingeniero", code:"100025"},
-  {id:27,usuario:"tomás",nombre:"Tomás Velásquez",pass:"tomas123",  rol:"Ingeniero", code:"100026"},
-];
-
-const SAMPLE_TASKS = [
-  {id:1,tarea:"Diseño de base de datos",desc:"Modelado ER para módulo de usuarios",asig:"Carlos Martínez",estado:"En proceso",fa:"05/05/2026",fc:"",esp:"",obs:"Revisar normalización",link:""},
-  {id:2,tarea:"API de autenticación",desc:"Endpoints JWT y refresh tokens",asig:"Laura Pérez",estado:"Pendiente revisión",fa:"07/05/2026",fc:"",esp:"",obs:"Pendiente code review",link:""},
-  {id:3,tarea:"Migración de datos",desc:"Script de migración a producción",asig:"Andrés Ramírez",estado:"En espera",fa:"03/05/2026",fc:"",esp:"Esperando credenciales del cliente",obs:"",link:""},
-  {id:4,tarea:"Dashboard de reportes",desc:"Gráficas de actividad mensual",asig:"María Torres",estado:"Terminado",fa:"01/05/2026",fc:"08/05/2026",esp:"",obs:"Aprobado por gerencia",link:""},
-  {id:5,tarea:"Pruebas de integración",desc:"Suite de tests para módulo de pagos",asig:"Carlos Martínez",estado:"Pendiente",fa:"10/05/2026",fc:"",esp:"",obs:"",link:""},
-];
-
 const COLS=[
   {key:"Pendiente",          cls:"col-pendiente"},
   {key:"Asignada",           cls:"col-asignada"},
@@ -94,9 +56,13 @@ async function apiRequest(path, options = {}) {
 
 /* ══════════ INIT ══════════ */
 async function init(){
-  users = [...DEFAULT_USERS.map(u=>({...u}))];
-  tasks = [...SAMPLE_TASKS.map(t=>({...t}))];
-  nextTaskId = tasks.length ? Math.max(...tasks.map(t=>t.id))+1 : 10;
+  try {
+    users = await apiRequest('/users');
+  } catch (error) {
+    users = [];
+  }
+  tasks = [];
+  nextTaskId = 10;
   populateSelects();
 
   // Mostrar login al iniciar
@@ -185,9 +151,9 @@ async function doLogin(){
     document.getElementById('screen-app').style.display='flex';
     document.getElementById('hdr-user').textContent = user.nombre + ' (' + user.rol + ')';
 
-    document.getElementById('add-btn').style.display = user.rol==='Ingeniero'?'flex':'none';
-    document.getElementById('btn-users').style.display = user.rol==='Gerente'?'inline-block':'none';
-    document.getElementById('sbox').style.display = user.rol==='Gerente'?'inline-block':'none';
+    document.getElementById('add-btn').style.display = user.rol==='Gerente' ? 'flex' : 'none';
+    document.getElementById('btn-users').style.display = user.rol==='Gerente' ? 'inline-block' : 'none';
+    document.getElementById('sbox').style.display = 'inline-block';
 
     await refreshApp();
   } catch (error) {
@@ -198,9 +164,7 @@ async function doLogin(){
 
 async function refreshApp(){
   try {
-    if (currentUser && currentUser.rol === 'Gerente') {
-      users = await apiRequest('/users');
-    }
+    users = await apiRequest('/users');
     tasks = await apiRequest('/tasks');
     nextTaskId = tasks.length ? Math.max(...tasks.map(t=>t.id))+1 : 10;
     populateSelects();

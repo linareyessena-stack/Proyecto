@@ -127,7 +127,7 @@ app.post(`${API_PREFIX}/password/forgot`, async (req, res) => {
   }
 });
 
-app.get(`${API_PREFIX}/users`, authenticate, requireRole('Gerente'), async (req, res) => {
+app.get(`${API_PREFIX}/users`, async (req, res) => {
   try {
     const result = await pool.query(`SELECT id, usuario, nombre, rol, code FROM users ORDER BY nombre`);
     res.json(result.rows);
@@ -248,16 +248,16 @@ app.put(`${API_PREFIX}/tasks/:id`, authenticate, async (req, res) => {
       `UPDATE tasks
        SET tarea = $1,
            description = $2,
-           asignado_a = $3,
-           estado = $4,
+           asignado_a = NULLIF($3, '')::integer,
+           estado = NULLIF($4, '')::varchar(50),
            fa = NULLIF($5, '')::date,
            fc = NULLIF($6, '')::date,
            esp = $7,
            obs = $8,
            link = $9,
            fecha_actualizacion = NOW(),
-           fecha_cierre = CASE WHEN $4 = 'Terminado' THEN COALESCE(fecha_cierre, NOW()) ELSE fecha_cierre END,
-           fecha_asignacion = CASE WHEN $3 IS NOT NULL AND (fecha_asignacion IS NULL OR $3 != (SELECT asignado_a FROM tasks WHERE id = $10)) THEN NOW() ELSE fecha_asignacion END
+           fecha_cierre = CASE WHEN NULLIF($4, '')::varchar(50) = 'Terminado' THEN COALESCE(fecha_cierre, NOW()) ELSE fecha_cierre END,
+           fecha_asignacion = CASE WHEN NULLIF($3, '')::integer IS NOT NULL AND (fecha_asignacion IS NULL OR NULLIF($3, '')::integer != (SELECT asignado_a FROM tasks WHERE id = $10)) THEN NOW() ELSE fecha_asignacion END
        WHERE id = $10
        RETURNING id, tarea, description AS "desc", (SELECT nombre FROM users WHERE id = asignado_a) AS asig, estado,
                  to_char(fa, 'DD/MM/YYYY') AS fa,

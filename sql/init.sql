@@ -45,11 +45,30 @@ CREATE TABLE IF NOT EXISTS comentarios (
 -- Datos iniciales de usuarios
 INSERT INTO users (usuario, nombre, pass, rol, code)
 VALUES
-  ('admin', 'Augusto Melo', 'admin123', 'Gerente', '000000'),
-  ('ana', 'Ana Rodríguez', 'ana123', 'Ingeniero', '100001'),
-  ('carlos', 'Carlos Martínez', 'carlos123', 'Ingeniero', '100002'),
-  ('laura', 'Laura Pérez', 'laura123', 'Ingeniero', '100003'),
-  ('andrés', 'Andrés Ramírez', 'andres123', 'Ingeniero', '100004');
+  ('augusto', 'Augusto Melo', 'admin123', 'Gerente', '000000'),
+  ('juan pablo', 'Juan Pablo Prieto', 'juanpablo123', 'Ingeniero', '100001'),
+  ('Eduardo', 'Eduardo Rodríguez', 'eduardo123', 'Ingeniero', '100002'),
+  ('julian montanez', 'Julian Montanez', 'julian123', 'Ingeniero', '100003'),
+  ('miguel avellaneda', 'Miguel Avellaneda', 'miguel123', 'Ingeniero', '100004'),
+  ('julio','julio','julio123','Ingeniero','100005'),
+  ('andres felipe','Andres Felipe','andres123','Ingeniero','100006'),
+  ('jonathan','Jonathan','jonathan123','Ingeniero','100007'),
+  ('lina reyes','Lina Reyes','lina123','Ingeniero','100008'),
+  ('david morales','david morales','david123','Ingeniero','100009'),
+  ('estevan','estevan','estevan123','Ingeniero','100010'),
+  ('angie','Angie','angie123','Ingeniero','100011'),
+  ('vicente wilches','Vicente Wilches','vicente123','Ingeniero','100012'),
+  ('hernan','Hernan','hernan123','Ingeniero','100013'),
+  ('faber','Faber','faber123','Ingeniero','100014'),
+  ('cesar','Cesar','cesar123','Ingeniero','100015'),
+  ('camilo','Camilo','camilo123','Ingeniero','100016'),
+  ('sebastian','Sebastian','sebastian123','Ingeniero','100017'),
+  ('fabio coconudo','Fabio coconudo','fabio123','Ingeniero','100018'),
+  ('deisy','Deisy','deisy123','Ingeniero','100019'),
+  ('maria lucia','Maria Lucia','maria123','Ingeniero','100020'),
+  ('fernando','Fernando','fernando123','Ingeniero','100021'),
+  ('andres','Andres','andres123','Ingeniero','100022')
+ON CONFLICT ON CONSTRAINT uq_users_usuario_lower DO NOTHING;
 
 -- Tareas de ejemplo
 INSERT INTO tasks (tarea, description, asig, estado, fa, fc, esp, obs, link, asignado_a, fecha_asignacion)
