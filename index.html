@@ -164,6 +164,20 @@
   </div>
 </div>
 
+<!-- ══ COMMENTS MODAL ══ -->
+<div class="mbg" id="mbg-comments" onclick="if(event.target===this)this.classList.remove('open')">
+  <div class="modal" style="width:500px">
+    <h3>Comentarios de la tarea</h3>
+    <div id="comments-list" style="max-height:300px;overflow-y:auto;margin-bottom:1rem"></div>
+    <div class="fr"><label>Nuevo comentario</label><textarea id="new-comment" placeholder="Escribe tu comentario..."></textarea></div>
+    <div class="fr"><label>Link de evidencia (opcional)</label><input id="comment-link" placeholder="https://..."/></div>
+    <div class="mbtns">
+      <button class="bc" onclick="document.getElementById('mbg-comments').classList.remove('open')">Cerrar</button>
+      <button class="bs" onclick="addComment()">Agregar comentario</button>
+    </div>
+  </div>
+</div>
+
 <script src="scripts/app.js"></script>
 </body>
 </html>

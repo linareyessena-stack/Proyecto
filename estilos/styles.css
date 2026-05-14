@@ -60,9 +60,12 @@ body{font-family:'Segoe UI',system-ui,sans-serif;background:var(--fondo);color:v
 .col-body{padding:7px;display:flex;flex-direction:column;gap:7px;overflow-y:auto;flex:1;min-height:60px;border-radius:0 0 12px 12px;transition:background .15s}
 .col-body.dragover{background:#c8d6e8;outline:2px dashed var(--azul2);outline-offset:-4px}
 .col-pendiente .col-hdr{background:var(--c1);color:var(--c1t)}
+.col-asignada .col-hdr{background:var(--c1);color:var(--c1t)}
 .col-proceso   .col-hdr{background:var(--c2);color:var(--c2t)}
 .col-espera    .col-hdr{background:var(--c3);color:var(--c3t)}
 .col-revision  .col-hdr{background:var(--c4);color:var(--c4t)}
+.col-validacion .col-hdr{background:var(--c2);color:var(--c2t)}
+.col-cancelada .col-hdr{background:#f8d7da;color:#842029}
 .col-terminado .col-hdr{background:var(--c5);color:var(--c5t)}
 
 /* ── CARD ── */
@@ -82,6 +85,17 @@ body{font-family:'Segoe UI',system-ui,sans-serif;background:var(--fondo);color:v
 .ca-btn{background:none;border:none;cursor:pointer;padding:3px 7px;border-radius:5px;font-size:12px;color:var(--texto2)}
 .ca-btn:hover{background:#e3f2fd;color:var(--azul)}
 .ca-btn.del:hover{background:#fce4ec;color:#c62828}
+
+/* ── TIMESTAMPS ── */
+.timestamps{margin-top:6px;font-size:11px;color:var(--texto2)}
+.timestamps small{display:block;margin:2px 0}
+
+/* ── COMMENTS ── */
+.comment{border-bottom:1px solid #eee;padding:8px 0;margin-bottom:8px}
+.comment strong{color:var(--azul)}
+.comment p{margin:4px 0}
+.comment a{color:var(--azul);text-decoration:none}
+.comment a:hover{text-decoration:underline}
 
 /* ── MODAL ── */
 .mbg{display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:300;align-items:center;justify-content:center}

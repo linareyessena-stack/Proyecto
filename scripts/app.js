@@ -38,34 +38,76 @@ const SAMPLE_TASKS = [
 ];
 
 const COLS=[
-  {key:"Tarea",          cls:"col-pendiente"},
-  {key:"Descripción",         cls:"col-proceso"},
-  {key:"Asignado",          cls:"En proceso"},
+  {key:"Pendiente",          cls:"col-pendiente"},
+  {key:"Asignada",           cls:"col-asignada"},
+  {key:"En proceso",         cls:"col-proceso"},
+  {key:"En espera",          cls:"col-espera"},
   {key:"Pendiente revisión", cls:"col-revision"},
+  {key:"Validación",         cls:"col-validacion"},
   {key:"Terminado",          cls:"col-terminado"},
+  {key:"Cancelada",          cls:"col-cancelada"},
 ];
 
-const UK="ctrl_users_v1", TK="ctrl_tasks_v2";
+const API_BASE = 'http://localhost:3550/api';
 let users=[], tasks=[], currentUser=null, nextTaskId=20, dragId=null;
 
+async function apiRequest(path, options = {}) {
+  const method = (options.method || 'GET').toUpperCase();
+  const headers = {
+    'Content-Type': 'application/json',
+    ...(options.headers || {})
+  };
+
+  if (currentUser) {
+    headers['x-usuario'] = currentUser.usuario;
+  }
+
+  if (method === 'GET' || method === 'HEAD') {
+    const response = await fetch(API_BASE + path, {
+      headers,
+      ...options,
+      body: undefined
+    });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      throw new Error(data.error || `Error ${response.status}`);
+    }
+    return data;
+  }
+
+  const body = options.body ? JSON.parse(options.body) : {};
+  if (currentUser) {
+    body.usuario = currentUser.usuario;
+  }
+
+  const response = await fetch(API_BASE + path, {
+    headers,
+    ...options,
+    body: JSON.stringify(body)
+  });
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(data.error || `Error ${response.status}`);
+  }
+  return data;
+}
+
 /* ══════════ INIT ══════════ */
-function init(){
-  const su=localStorage.getItem(UK);
-  users=su?JSON.parse(su):[...DEFAULT_USERS.map(u=>({...u}))];
-  const st=localStorage.getItem(TK);
-  tasks=st?JSON.parse(st):[...SAMPLE_TASKS.map(t=>({...t}))];
-  nextTaskId=tasks.length?Math.max(...tasks.map(t=>t.id))+1:10;
+async function init(){
+  users = [...DEFAULT_USERS.map(u=>({...u}))];
+  tasks = [...SAMPLE_TASKS.map(t=>({...t}))];
+  nextTaskId = tasks.length ? Math.max(...tasks.map(t=>t.id))+1 : 10;
   populateSelects();
 
-  //Mostrar login al iniciar
+  // Mostrar login al iniciar
   showLogin();
 }
-function saveUsers(){localStorage.setItem(UK,JSON.stringify(users))}
-function saveTasks(){localStorage.setItem(TK,JSON.stringify(tasks))}
+function saveUsers(){/* Usuarios se actualizan por endpoints específicos */}
+function saveTasks(){/* Tareas se actualizan por endpoints específicos */}
 
 function populateSelects(){
-
   const fu=document.getElementById('forgot-user');
+  const fa=document.getElementById('fa');
 
   const sorted=[...users].sort((a,b)=>
     a.nombre.localeCompare(b.nombre)
@@ -77,12 +119,10 @@ function populateSelects(){
       `<option value="${u.usuario}">${u.nombre}</option>`
     ).join('');
 
-  const fa=document.getElementById('fa');
-
   fa.innerHTML =
     '<option value="">— Sin asignar —</option>' +
     sorted.map(u=>
-      `<option value="${u.nombre}">${u.nombre}</option>`
+      `<option value="${u.id}">${u.nombre}</option>`
     ).join('');
 }
 
@@ -121,7 +161,7 @@ function doLogout(){
 
 
 
-function doLogin(){
+async function doLogin(){
   const usuario = document.getElementById('login-user').value.trim().toLowerCase();
   const pass = document.getElementById('login-pass').value;
   const err = document.getElementById('login-err');
@@ -132,43 +172,46 @@ function doLogin(){
     return;
   }
 
-  const u = users.find(x => x.usuario.toLowerCase() === usuario && x.pass === pass);
+  try {
+    const { user } = await apiRequest('/login', {
+      method:'POST',
+      body: JSON.stringify({ usuario, pass })
+    });
 
-  if(!u){
-    err.textContent='Usuario o contraseña incorrectos.';
+    err.style.display='none';
+    currentUser = user;
+
+    document.getElementById('screen-login').style.display='none';
+    document.getElementById('screen-app').style.display='flex';
+    document.getElementById('hdr-user').textContent = user.nombre + ' (' + user.rol + ')';
+
+    document.getElementById('add-btn').style.display = user.rol==='Ingeniero'?'flex':'none';
+    document.getElementById('btn-users').style.display = user.rol==='Gerente'?'inline-block':'none';
+    document.getElementById('sbox').style.display = user.rol==='Gerente'?'inline-block':'none';
+
+    await refreshApp();
+  } catch (error) {
+    err.textContent = error.message.includes('Usuario o contraseña') ? 'Usuario o contraseña incorrectos.' : 'Error de conexión con el servidor.';
     err.style.display='block';
-    return;
   }
-
-  err.style.display='none';
-  currentUser=u;
-
-  document.getElementById('screen-login').style.display='none';
-  document.getElementById('screen-app').style.display='flex';
-  document.getElementById('hdr-user').textContent = u.nombre + ' (' + u.rol + ')';
-
-
-  document.getElementById('add-btn').style.display = u.rol==='Ingeniero'?'flex':'none';
-  document.getElementById('btn-users').style.display = u.rol==='Gerente'?'inline-block':'none';
-  document.getElementById('sbox').style.display = u.rol==='Gerente'?'inline-block':'none';
-
-
-  renderBoard();
 }
 
-function refreshApp(){
-  const su = localStorage.getItem(UK);
-  users = su ? JSON.parse(su) : [...DEFAULT_USERS.map(u=>({...u}))];
+async function refreshApp(){
+  try {
+    if (currentUser && currentUser.rol === 'Gerente') {
+      users = await apiRequest('/users');
+    }
+    tasks = await apiRequest('/tasks');
+    nextTaskId = tasks.length ? Math.max(...tasks.map(t=>t.id))+1 : 10;
+    populateSelects();
 
-  const st = localStorage.getItem(TK);
-  tasks = st ? JSON.parse(st) : [...SAMPLE_TASKS.map(t=>({...t}))];
-
-  nextTaskId = tasks.length ? Math.max(...tasks.map(t=>t.id))+1 : 10;
-  populateSelects();
-
-  if(currentUser){
-    document.getElementById('hdr-user').textContent = currentUser.nombre + ' (' + currentUser.rol + ')';
-    renderBoard();
+    if(currentUser){
+      document.getElementById('hdr-user').textContent = currentUser.nombre + ' (' + currentUser.rol + ')';
+      renderBoard();
+    }
+  } catch (error) {
+    console.error(error);
+    alert('No se pudo actualizar desde el servidor.');
   }
 }
 
@@ -180,7 +223,7 @@ function refreshApp(){
 
 let forgotVerified = false;
 
-function doForgot(){
+async function doForgot(){
   const usuario = document.getElementById('forgot-user').value.trim().toLowerCase();
   const code=document.getElementById('forgot-code').value.trim();
   const msg=document.getElementById('forgot-msg');
@@ -188,42 +231,47 @@ function doForgot(){
   if(!usuario){
     showMsg(msg,'err','Ingresa tu usuario.');
     return;
-}
+  }
 
-const u = users.find(x => x.usuario.toLowerCase() === usuario);
-
-if(!u){
-  showMsg(msg,'err','Usuario no encontrado.');
-  return;
-}
-
-if(!forgotVerified){
-  if(String(u.code).trim() !== String(code).trim()){
-    showMsg(msg,'err','Código incorrecto.Consulta con el administrador.');
+  const u = users.find(x => x.usuario.toLowerCase() === usuario);
+  if(!u){
+    showMsg(msg,'err','Usuario no encontrado.');
     return;
-}
-forgotVerified =true;
-document.getElementById('forgot-newpass-row').style.display='block';
-showMsg(msg,'ok','Código correcto. Escribe tu nueva contraseña y presiona "Cambiar".');
-return;
-}
+  }
 
-const np =document.getElementById('forgot-newpass').value;
-if(np.length < 4){
-  showMsg(msg,'err','La contraseña debe tener al menos 4 caracteres.');
-  return;
-}
-  //Actualizar contraseña
-  users = users.map(x => x.usuario.toLowerCase() === usuario ? {...x, pass: np} : x)
-  saveUsers();
+  if(!forgotVerified){
+    if(String(u.code).trim() !== String(code).trim()){
+      showMsg(msg,'err','Código incorrecto. Consulta con el administrador.');
+      return;
+    }
+    forgotVerified = true;
+    document.getElementById('forgot-newpass-row').style.display='block';
+    showMsg(msg,'ok','Código correcto. Escribe tu nueva contraseña y presiona "Cambiar".');
+    return;
+  }
 
-  forgotVerified =false;
-  showMsg(msg,'ok','¡Contraseña actualizada! Ya puedes inicar sesión.');
+  const np = document.getElementById('forgot-newpass').value;
+  if(np.length < 4){
+    showMsg(msg,'err','La contraseña debe tener al menos 4 caracteres.');
+    return;
+  }
 
-  setTimeout(()=>{
-    document.getElementById('forgot-newpass-row').style.display='none';
-    showLogin();
-  },2000);
+  try {
+    await apiRequest('/password/forgot', {
+      method:'POST',
+      body: JSON.stringify({ usuario, code, newPassword: np })
+    });
+
+    forgotVerified = false;
+    showMsg(msg,'ok','¡Contraseña actualizada! Ya puedes iniciar sesión.');
+
+    setTimeout(()=>{
+      document.getElementById('forgot-newpass-row').style.display='none';
+      showLogin();
+    },2000);
+  } catch (error) {
+    showMsg(msg,'err', error.message || 'Error al cambiar la contraseña.');
+  }
 }
 
 /* ══════════ CHANGE PASSWORD ══════════ */
@@ -235,23 +283,39 @@ function showChangePwd(){
   m.style.display='none';
   document.getElementById('mbg-changepwd').classList.add('open');
 }
-function doChangePwd(){
+async function doChangePwd(){
   const actual=document.getElementById('cp-actual').value;
   const nueva=document.getElementById('cp-nueva').value;
   const confirm=document.getElementById('cp-confirm').value;
   const msg=document.getElementById('chpwd-msg');
-  if(actual!==currentUser.pass){showMsg(msg,'err','La contraseña actual es incorrecta.');return}
+  if(!actual){showMsg(msg,'err','Ingresa tu contraseña actual.');return}
   if(nueva.length<4){showMsg(msg,'err','La nueva contraseña debe tener al menos 4 caracteres.');return}
   if(nueva!==confirm){showMsg(msg,'err','Las contraseñas no coinciden.');return}
-  users=users.map(u=>u.id===currentUser.id?{...u,pass:nueva}:u);
-  currentUser={...currentUser,pass:nueva};
-  saveUsers();
-  showMsg(msg,'ok','¡Contraseña cambiada exitosamente!');
-  setTimeout(()=>document.getElementById('mbg-changepwd').classList.remove('open'),1800);
+
+  try {
+    await apiRequest('/password/change', {
+      method:'POST',
+      body: JSON.stringify({ usuario: currentUser.usuario, currentPassword: actual, newPassword: nueva })
+    });
+
+    users = users.map(u=>u.id===currentUser.id?{...u,pass:nueva}:u);
+    currentUser={...currentUser,pass:nueva};
+    showMsg(msg,'ok','¡Contraseña cambiada exitosamente!');
+    setTimeout(()=>document.getElementById('mbg-changepwd').classList.remove('open'),1800);
+  } catch (error) {
+    showMsg(msg,'err', error.message || 'Error al cambiar la contraseña.');
+  }
 }
 
 /* ══════════ USERS PANEL (Gerente) ══════════ */
-function openUsersPanel(){
+async function openUsersPanel(){
+  try {
+    users = await apiRequest('/users');
+  } catch (error) {
+    alert('No se pudo cargar la lista de usuarios.');
+    return;
+  }
+
   const sorted=[...users].sort((a,b)=>a.nombre.localeCompare(b.nombre));
   document.getElementById('users-table').innerHTML=`
     <tr><th>#</th><th>Nombre</th><th>Rol</th><th>Código rec.</th><th>Acción</th></tr>`+
@@ -276,19 +340,31 @@ function openEditUser(id){
   document.getElementById('eu-title').textContent='Editar: '+u.nombre;
   document.getElementById('mbg-edituser').classList.add('open');
 }
-function saveEditUser(){
+async function saveEditUser(){
   const id=parseInt(document.getElementById('eu-id').value);
   const nombre=document.getElementById('eu-nombre').value.trim();
   const pass=document.getElementById('eu-pass').value;
   const code=document.getElementById('eu-code').value.trim();
+  const rol=document.getElementById('eu-rol').value;
   if(!nombre){alert('El nombre no puede estar vacío.');return}
-  users=users.map(u=>{
-    if(u.id!==id)return u;
-    return { ...u, nombre, code, pass: pass || u.pass };
-  });
-  saveUsers();populateSelects();
-  document.getElementById('mbg-edituser').classList.remove('open');
-  openUsersPanel();
+
+  try {
+    const updated = await apiRequest(`/users/${id}`, {
+      method:'PUT',
+      body: JSON.stringify({ nombre, pass, rol, code })
+    });
+
+    users = users.map(u=>u.id===id?updated:u);
+    if(currentUser && currentUser.id === id){
+      currentUser = { ...currentUser, nombre: updated.nombre, rol: updated.rol };
+      document.getElementById('hdr-user').textContent = currentUser.nombre + ' (' + currentUser.rol + ')';
+    }
+    populateSelects();
+    document.getElementById('mbg-edituser').classList.remove('open');
+    openUsersPanel();
+  } catch (error) {
+    alert(error.message || 'Error al actualizar usuario.');
+  }
 }
 
 /* ══════════ KANBAN ══════════ */
@@ -324,68 +400,66 @@ function renderBoard(){
 
       const delBtn=currentUser&&currentUser.rol==='Gerente'?`<button class="ca-btn del" onclick="delTask(${t.id})">🗑</button>`:'';
 
-      const card=document.createElement('div');
-      card.className='card';card.draggable=true;card.dataset.id=t.id;
-      card.innerHTML=`
+      const timestampsHtml = `
+        <div class="timestamps">
+          ${t.fecha_creacion ? `<small>Creada: ${new Date(t.fecha_creacion).toLocaleDateString()}</small>` : ''}
+          ${t.fecha_asignacion ? `<small>Asignada: ${new Date(t.fecha_asignacion).toLocaleDateString()}</small>` : ''}
+          ${t.fecha_cierre ? `<small>Cerrada: ${new Date(t.fecha_cierre).toLocaleDateString()}</small>` : ''}
+          ${t.fecha_actualizacion ? `<small>Actualizada: ${new Date(t.fecha_actualizacion).toLocaleDateString()}</small>` : ''}
+        </div>`;
+
+      const editBtn=`<button class="ca-btn" onclick="openEdit(${t.id})">✏️</button>`;
+      const commentBtn=`<button class="ca-btn" onclick="openComments(${t.id})">💬</button>`;
+
+      const card = document.createElement('div');
+      card.className = 'card';
+      card.innerHTML = `
         <div class="card-title">${esc(t.tarea)}</div>
-        ${t.desc?`<div class="card-desc">${esc(t.desc)}</div>`:''}
+        <div class="card-desc">${esc(t.desc)}</div>
         <div class="card-meta">
-          ${t.asig?`<span class="chip chip-asig">👤 ${esc(t.asig)}</span>`:''}
+          ${t.asig ? `<span>Asignado: ${esc(t.asig)}</span>` : ''}
           ${diasHtml}
-          ${t.fc?`<span class="chip" style="background:#f0f0f0;color:#666">🏁 ${t.fc}</span>`:''}
+          ${espHtml}
         </div>
-        ${espHtml}
         <div class="card-actions">
-        <div class="card-actions">
+          ${editBtn} ${commentBtn} ${delBtn}
+        </div>
+        ${timestampsHtml}
+      `;
 
-  <button class="ca-btn" onclick="cambiarEstado(${t.id}, 'En proceso')">
-    En proceso
-  </button>
-
-  <button class="ca-btn" onclick="cambiarEstado(${t.id}, 'En espera')">
-    En espera
-  </button>
-
-  <button class="ca-btn" onclick="cambiarEstado(${t.id}, 'Pendiente revisión')">
-    Revisión
-  </button>
-
-  <button class="ca-btn" onclick="cambiarEstado(${t.id}, 'Terminado')">
-    Terminado
-  </button>
-
-  <button class="ca-btn" onclick="openEdit(${t.id})">
-    ✏️
-  </button>
-
-  ${delBtn}
-
-</div>
- `;
       card.addEventListener('dragstart',e=>{dragId=t.id;setTimeout(()=>card.classList.add('dragging'),0);e.dataTransfer.effectAllowed='move'});
       card.addEventListener('dragend',()=>card.classList.remove('dragging'));
       body.appendChild(card);
     });
     body.addEventListener('dragover',e=>{e.preventDefault();body.classList.add('dragover')});
     body.addEventListener('dragleave',()=>body.classList.remove('dragover'));
-    body.addEventListener('drop',e=>{
+    body.addEventListener('drop', async e=>{
       e.preventDefault();body.classList.remove('dragover');
       if(dragId===null)return;
       const ne=body.dataset.col;
-      tasks=tasks.map(t=>{
-        if(t.id!==dragId)return t;
-        let fc=t.fc;
-        if(ne==='Terminado'&&!fc)fc=today();
-        if(ne!=='Terminado')fc='';
-        return{...t,estado:ne,fc};
-      });
-      saveTasks();renderBoard();dragId=null;
+      try {
+        await updateTaskStatus(dragId, ne);
+        renderBoard();
+      } catch (error) {
+        alert('Error guardando cambio de estado.');
+        console.error(error);
+      }
+      dragId=null;
     });
     board.appendChild(colEl);
   });
 }
 
-function delTask(id){if(!confirm('¿Eliminar esta tarea?'))return;tasks=tasks.filter(t=>t.id!==id);saveTasks();renderBoard()}
+async function delTask(id){
+  if(!confirm('¿Eliminar esta tarea?'))return;
+  try {
+    await apiRequest(`/tasks/${id}`, { method: 'DELETE' });
+    tasks = tasks.filter(t=>t.id!==id);
+    renderBoard();
+  } catch (error) {
+    alert('No se pudo eliminar la tarea. ' + (error.message || ''));
+  }
+}
 
 function openModal(task){
   const e=!!task;
@@ -393,7 +467,7 @@ function openModal(task){
   document.getElementById('mid').value=e?task.id:'';
   document.getElementById('ft').value=e?task.tarea:'';
   document.getElementById('fd').value=e?task.desc:'';
-  document.getElementById('fa').value=e?task.asig:'';
+  document.getElementById('fa').value=e?task.asignado_a:'';
   document.getElementById('fe').value=e?task.estado:'Pendiente';
   document.getElementById('fes').value=e?task.esp:'';
   document.getElementById('fo').value=e?task.obs:'';
@@ -407,26 +481,44 @@ function closeTaskModal(){document.getElementById('mbg-task').classList.remove('
 function closeMbg(e){if(e.target===document.getElementById('mbg-task'))closeTaskModal()}
 function chkEspera(){document.getElementById('row-esp').style.display=document.getElementById('fe').value==='En espera'?'block':'none'}
 
-function saveTask(){
+async function saveTask(){
   const tarea=document.getElementById('ft').value.trim();
   if(!tarea){alert('Ingresa el nombre de la tarea');return}
   const id=document.getElementById('mid').value;
   const estado=currentUser&&currentUser.rol==='Gerente'?document.getElementById('fe').value:'Pendiente';
   const esp=document.getElementById('fes').value.trim();
   if(estado==='En espera'&&!esp){alert('Indica el motivo de espera');return}
-  const f={tarea,desc:document.getElementById('fd').value.trim(),asig:document.getElementById('fa').value.trim(),estado,esp,obs:document.getElementById('fo').value.trim(),link:document.getElementById('fl').value.trim()};
-  if(id){
-    tasks=tasks.map(t=>{
-      if(String(t.id)!==String(id))return t;
-      let fc=t.fc;
-      if(f.estado==='Terminado'&&!fc)fc=today();
-      if(f.estado!=='Terminado')fc='';
-      return{...t,...f,fc};
-    });
-  }else{
-    tasks.push({...f,id:nextTaskId++,fa:today(),fc:''});
+  const f={tarea,desc:document.getElementById('fd').value.trim(),asignado_a:document.getElementById('fa').value.trim() || null,estado,esp,obs:document.getElementById('fo').value.trim(),link:document.getElementById('fl').value.trim()};
+
+  try {
+    if(id){
+      const original = tasks.find(t=>String(t.id)===String(id)) || {};
+      const updated = await apiRequest(`/tasks/${id}`, {
+        method: 'PUT',
+        body: JSON.stringify({
+          ...f,
+          fa: original.fa || today(),
+          fc: original.fc || ''
+        })
+      });
+      tasks = tasks.map(t=>String(t.id)===String(id)?updated:t);
+    } else {
+      const created = await apiRequest('/tasks', {
+        method: 'POST',
+        body: JSON.stringify({
+          ...f,
+          fa: today(),
+          fc: ''
+        })
+      });
+      tasks.push(created);
+      nextTaskId = tasks.length ? Math.max(...tasks.map(t=>t.id))+1 : 10;
+    }
+    closeTaskModal();
+    renderBoard();
+  } catch (error) {
+    alert('Error guardando la tarea. ' + (error.message || ''));
   }
-  saveTasks();closeTaskModal();renderBoard();
 }
 
 function showMsg(el,type,text){
@@ -435,17 +527,107 @@ function showMsg(el,type,text){
   el.style.display='block';
 }
 
-function cambiarEstado(id, nuevoEstado) {
-  tasks = tasks.map(t => {
-    if (t.id !== id) return t;
-    let fc = t.fc;
-    if (nuevoEstado === 'Terminado' && !fc) fc = today();
-    if (nuevoEstado !== 'Terminado') fc = '';
-    return { ...t, estado: nuevoEstado, fc };
+async function cambiarEstado(id, nuevoEstado) {
+  try {
+    const task = tasks.find(t => t.id === id);
+    if (!task) return;
+    const fc = nuevoEstado === 'Terminado' && !task.fc ? today() : (nuevoEstado !== 'Terminado' ? '' : task.fc);
+    const updated = await apiRequest(`/tasks/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify({
+        tarea: task.tarea,
+        desc: task.desc,
+        asig: task.asig,
+        estado: nuevoEstado,
+        fa: task.fa || today(),
+        fc,
+        esp: task.esp,
+        obs: task.obs,
+        link: task.link
+      })
+    });
+    tasks = tasks.map(t => t.id === id ? updated : t);
+    renderBoard();
+  } catch (error) {
+    alert('Error al cambiar el estado. ' + (error.message || ''));
+  }
+}
+
+async function updateTaskStatus(id, nuevoEstado) {
+  const task = tasks.find(t => t.id === id);
+  if (!task) return;
+  const fc = nuevoEstado === 'Terminado' && !task.fc ? today() : (nuevoEstado !== 'Terminado' ? '' : task.fc);
+  const updated = await apiRequest(`/tasks/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify({
+      tarea: task.tarea,
+      desc: task.desc,
+      asignado_a: task.asignado_a,
+      estado: nuevoEstado,
+      fa: task.fa || today(),
+      fc,
+      esp: task.esp,
+      obs: task.obs,
+      link: task.link
+    })
   });
-  saveTasks();
-  renderBoard();
+  tasks = tasks.map(t => t.id === id ? updated : t);
+}
+
+function openComments(taskId) {
+  const task = tasks.find(t => t.id === taskId);
+  if (!task) return;
+
+  document.getElementById('mbg-comments').dataset.taskId = taskId;
+  document.getElementById('comments-list').innerHTML = '<p>Cargando comentarios...</p>';
+  document.getElementById('new-comment').value = '';
+  document.getElementById('comment-link').value = '';
+  document.getElementById('mbg-comments').classList.add('open');
+
+  loadComments(taskId);
+}
+
+async function loadComments(taskId) {
+  try {
+    const comments = await apiRequest(`/tasks/${taskId}/comments`);
+    const list = document.getElementById('comments-list');
+    if (comments.length === 0) {
+      list.innerHTML = '<p>No hay comentarios aún.</p>';
+    } else {
+      list.innerHTML = comments.map(c => `
+        <div class="comment">
+          <strong>${esc(c.usuario)} (${c.rol})</strong> - ${new Date(c.fecha_creacion).toLocaleString()}
+          <p>${esc(c.comentario)}</p>
+          ${c.evidencia_link ? `<a href="${esc(c.evidencia_link)}" target="_blank">Ver evidencia</a>` : ''}
+        </div>
+      `).join('');
+    }
+  } catch (error) {
+    document.getElementById('comments-list').innerHTML = '<p>Error cargando comentarios.</p>';
+  }
+}
+
+async function addComment() {
+  const taskId = document.getElementById('mbg-comments').dataset.taskId;
+  const comentario = document.getElementById('new-comment').value.trim();
+  const evidencia_link = document.getElementById('comment-link').value.trim();
+
+  if (!comentario) {
+    alert('Ingresa un comentario.');
+    return;
+  }
+
+  try {
+    await apiRequest(`/tasks/${taskId}/comments`, {
+      method: 'POST',
+      body: JSON.stringify({ comentario, evidencia_link })
+    });
+    loadComments(taskId);
+    document.getElementById('new-comment').value = '';
+    document.getElementById('comment-link').value = '';
+  } catch (error) {
+    alert('Error agregando comentario.');
+  }
 }
 
 init();
-showLogin();
