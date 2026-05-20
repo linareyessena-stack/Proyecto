@@ -65,7 +65,6 @@
     <span class="user-name" id="hdr-user">—</span>
     <button class="hdr-btn" onclick="showChangePwd()">🔒 Cambiar contraseña</button>
     <button class="hdr-btn" id="btn-users" onclick="openUsersPanel()" style="display:none">👥 Usuarios</button>
-    <button class="hdr-btn" onclick="refreshApp()">🔄 Actualizar</button> <!-- 👈 nuevo botón -->
     <button class="hdr-btn" onclick="doLogout()">Salir</button>
   </div>
   <div class="tbar">
@@ -128,7 +127,6 @@
 <div class="mbg" id="mbg-users" onclick="if(event.target===this)this.classList.remove('open')">
   <div class="modal" style="width:560px">
     <h3>👥 Gestión de usuarios</h3>
-    <p style="font-size:12px;color:var(--texto2);margin-bottom:.5rem">Haz clic en "Editar" para cambiar el nombre, contraseña o rol de un usuario.</p>
     <div style="max-height:420px;overflow-y:auto">
       <table class="up-table" id="users-table"></table>
     </div>
@@ -141,6 +139,7 @@
   <div class="modal" style="width:360px">
     <h3 id="eu-title">Editar usuario</h3>
     <input type="hidden" id="eu-id"/>
+    <input type="hidden" id="eu-usuario"/>
     <div class="fr"><label>Nombre completo</label><input id="eu-nombre" placeholder="Nombre"/></div>
     <div class="fr"><label>Nueva contraseña (dejar vacío para no cambiar)</label>
       <input type="password" id="eu-pass" placeholder="••••••••"/></div>

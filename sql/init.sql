@@ -25,6 +25,7 @@ CREATE TABLE IF NOT EXISTS tasks (
   obs TEXT,
   link TEXT,
   asignado_a INTEGER REFERENCES users(id) ON DELETE SET NULL,
+  orden NUMERIC DEFAULT 0,
   fecha_creacion TIMESTAMP WITHOUT TIME ZONE DEFAULT NOW(),
   fecha_asignacion TIMESTAMP WITHOUT TIME ZONE,
   fecha_cierre TIMESTAMP WITHOUT TIME ZONE,
@@ -32,6 +33,8 @@ CREATE TABLE IF NOT EXISTS tasks (
   created_at TIMESTAMP WITHOUT TIME ZONE DEFAULT NOW(),
   updated_at TIMESTAMP WITHOUT TIME ZONE DEFAULT NOW()
 );
+
+ALTER TABLE tasks ADD COLUMN IF NOT EXISTS orden NUMERIC DEFAULT 0;
 
 CREATE TABLE IF NOT EXISTS comentarios (
   id SERIAL PRIMARY KEY,
@@ -43,6 +46,7 @@ CREATE TABLE IF NOT EXISTS comentarios (
 );
 
 -- Datos iniciales de usuarios
+
 INSERT INTO users (usuario, nombre, pass, rol, code)
 VALUES
   ('augusto', 'Augusto Melo', 'admin123', 'Gerente', '000000'),

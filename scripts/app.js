@@ -10,7 +10,7 @@ const COLS=[
   {key:"Cancelada",          cls:"col-cancelada"},
 ];
 
-const API_BASE = 'http://localhost:3550/api';
+const API_BASE = '/api';
 let users=[], tasks=[], currentUser=null, nextTaskId=20, dragId=null;
 
 async function apiRequest(path, options = {}) {
@@ -282,14 +282,13 @@ async function openUsersPanel(){
 
   const sorted=[...users].sort((a,b)=>a.nombre.localeCompare(b.nombre));
   document.getElementById('users-table').innerHTML=`
-    <tr><th>#</th><th>Nombre</th><th>Rol</th><th>Código rec.</th><th>Acción</th></tr>`+
+  <tr></tr>`+
     sorted.map((u,i)=>`
       <tr>
         <td>${i+1}</td>
         <td>${esc(u.nombre)}</td>
         <td><span class="up-badge ${u.rol==='Gerente'?'up-g':'up-i'}">${u.rol}</span></td>
         <td style="font-family:monospace">${u.code}</td>
-        <td><button class="ca-btn" onclick="openEditUser(${u.id})">✏️ Editar</button></td>
       </tr>`).join('');
   document.getElementById('mbg-users').classList.add('open');
 }
@@ -297,6 +296,7 @@ function openEditUser(id){
   const u=users.find(x=>x.id===id);
   if(!u)return;
   document.getElementById('eu-id').value=u.id;
+  document.getElementById('eu-usuario').value=u.usuario;
   document.getElementById('eu-nombre').value=u.nombre;
   document.getElementById('eu-pass').value='';
   document.getElementById('eu-rol').value=u.rol;
@@ -306,6 +306,7 @@ function openEditUser(id){
 }
 async function saveEditUser(){
   const id=parseInt(document.getElementById('eu-id').value);
+  const usuario=document.getElementById('eu-usuario').value.trim();
   const nombre=document.getElementById('eu-nombre').value.trim();
   const pass=document.getElementById('eu-pass').value;
   const code=document.getElementById('eu-code').value.trim();
@@ -315,7 +316,7 @@ async function saveEditUser(){
   try {
     const updated = await apiRequest(`/users/${id}`, {
       method:'PUT',
-      body: JSON.stringify({ nombre, pass, rol, code })
+      body: JSON.stringify({ usuario, nombre, pass, rol, code })
     });
 
     users = users.map(u=>u.id===id?updated:u);
@@ -356,14 +357,10 @@ function renderBoard(){
     const body=colEl.querySelector('.col-body');
 
     cards.forEach(t=>{
-      
       const d = t.estado !== 'Terminado' ? days(t.fa, today()) : null;
-
       const diasHtml=d!==null?`<span class="chip ${dCls(d)}">${d}d</span>`:`<span class="chip d-ok">✓</span>`;
       const espHtml=t.esp?`<div class="espera-note">⏸ ${esc(t.esp)}</div>`:'';
-
       const delBtn=currentUser&&currentUser.rol==='Gerente'?`<button class="ca-btn del" onclick="delTask(${t.id})">🗑</button>`:'';
-
       const timestampsHtml = `
         <div class="timestamps">
           ${t.fecha_creacion ? `<small>Creada: ${new Date(t.fecha_creacion).toLocaleDateString()}</small>` : ''}
@@ -371,12 +368,13 @@ function renderBoard(){
           ${t.fecha_cierre ? `<small>Cerrada: ${new Date(t.fecha_cierre).toLocaleDateString()}</small>` : ''}
           ${t.fecha_actualizacion ? `<small>Actualizada: ${new Date(t.fecha_actualizacion).toLocaleDateString()}</small>` : ''}
         </div>`;
-
       const editBtn=`<button class="ca-btn" onclick="openEdit(${t.id})">✏️</button>`;
       const commentBtn=`<button class="ca-btn" onclick="openComments(${t.id})">💬</button>`;
-
       const card = document.createElement('div');
       card.className = 'card';
+      const canDrag = currentUser && (currentUser.rol === 'Gerente' || currentUser.id === t.asignado_a);
+      card.setAttribute('draggable', canDrag ? 'true' : 'false');
+      card.dataset.id = t.id;
       card.innerHTML = `
         <div class="card-title">${esc(t.tarea)}</div>
         <div class="card-desc">${esc(t.desc)}</div>
@@ -391,27 +389,128 @@ function renderBoard(){
         ${timestampsHtml}
       `;
 
-      card.addEventListener('dragstart',e=>{dragId=t.id;setTimeout(()=>card.classList.add('dragging'),0);e.dataTransfer.effectAllowed='move'});
-      card.addEventListener('dragend',()=>card.classList.remove('dragging'));
+      card.addEventListener('dragstart', e => {
+        const canDragStart = currentUser && (currentUser.rol === 'Gerente' || currentUser.id === t.asignado_a);
+        if (!canDragStart) {
+          e.preventDefault();
+          return;
+        }
+        dragId = t.id;
+        setTimeout(() => card.classList.add('dragging'), 0);
+        e.dataTransfer.effectAllowed = 'move';
+      });
+      card.addEventListener('dragend', () => {
+        dragId = null;
+        card.classList.remove('dragging');
+      });
+      card.addEventListener('dragover', e => {
+        const currentTask = tasks.find(task => task.id === dragId);
+        const canDrag = currentUser && (currentUser.rol === 'Gerente' || (currentTask && currentUser.id === currentTask.asignado_a));
+        if (!canDrag) return;
+        e.preventDefault();
+        card.classList.add('dragover');
+      });
+      card.addEventListener('dragleave', () => card.classList.remove('dragover'));
+      card.addEventListener('drop', async e => {
+        const currentTask = tasks.find(task => task.id === dragId);
+        const canDrag = currentUser && (currentUser.rol === 'Gerente' || (currentTask && currentUser.id === currentTask.asignado_a));
+        if (!canDrag) return;
+        e.preventDefault();
+        card.classList.remove('dragover');
+        if (dragId === null || dragId === t.id) return;
+        const ne = body.dataset.col;
+        const rect = card.getBoundingClientRect();
+        const insertAfter = e.clientY > rect.top + rect.height / 2;
+        const beforeId = insertAfter ? null : t.id;
+        const afterId = insertAfter ? t.id : null;
+        try {
+          await moveTask(dragId, ne, beforeId, afterId);
+          renderBoard();
+        } catch (error) {
+          alert('Error guardando cambio de posición.');
+          console.error(error);
+        }
+      });
+
       body.appendChild(card);
     });
-    body.addEventListener('dragover',e=>{e.preventDefault();body.classList.add('dragover')});
-    body.addEventListener('dragleave',()=>body.classList.remove('dragover'));
-    body.addEventListener('drop', async e=>{
-      e.preventDefault();body.classList.remove('dragover');
-      if(dragId===null)return;
-      const ne=body.dataset.col;
+
+    body.addEventListener('dragover', e => {
+      const currentTask = tasks.find(t => t.id === dragId);
+      const canDrop = currentUser && (currentUser.rol === 'Gerente' || (currentTask && currentUser.id === currentTask.asignado_a));
+      if (!canDrop) return;
+      e.preventDefault();
+      body.classList.add('dragover');
+    });
+    body.addEventListener('dragleave', () => body.classList.remove('dragover'));
+    body.addEventListener('drop', async e => {
+      const currentTask = tasks.find(t => t.id === dragId);
+      const canDrop = currentUser && (currentUser.rol === 'Gerente' || (currentTask && currentUser.id === currentTask.asignado_a));
+      if (!canDrop) return;
+      e.preventDefault();
+      body.classList.remove('dragover');
+      if (dragId === null) return;
+      const ne = body.dataset.col;
       try {
-        await updateTaskStatus(dragId, ne);
+        await moveTask(dragId, ne, null, null);
         renderBoard();
       } catch (error) {
         alert('Error guardando cambio de estado.');
         console.error(error);
       }
-      dragId=null;
     });
     board.appendChild(colEl);
   });
+}
+
+function getColumnTasks(estado, excludeId) {
+  return tasks
+    .filter(t => t.estado === estado && t.id !== excludeId)
+    .sort((a, b) => Number(a.orden) - Number(b.orden));
+}
+
+function calculateOrder(estado, beforeId, afterId, excludeId) {
+  const columnTasks = getColumnTasks(estado, excludeId);
+  if (beforeId) {
+    const index = columnTasks.findIndex(t => t.id === beforeId);
+    if (index === 0) {
+      return Number(columnTasks[0]?.orden || 1000) / 2 || 500;
+    }
+    const prev = columnTasks[index - 1];
+    const next = columnTasks[index];
+    return (Number(prev.orden) + Number(next.orden)) / 2;
+  }
+  if (afterId) {
+    const index = columnTasks.findIndex(t => t.id === afterId);
+    if (index === columnTasks.length - 1) {
+      return Number(columnTasks[index].orden || 0) + 1000;
+    }
+    const next = columnTasks[index + 1];
+    return (Number(columnTasks[index].orden) + Number(next.orden)) / 2;
+  }
+  return columnTasks.length ? Number(columnTasks[columnTasks.length - 1].orden) + 1000 : 1000;
+}
+
+async function moveTask(id, newEstado, beforeId, afterId) {
+  const task = tasks.find(t => t.id === id);
+  if (!task) return;
+  const newOrden = calculateOrder(newEstado, beforeId, afterId, id);
+  const updated = await apiRequest(`/tasks/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify({
+      tarea: task.tarea,
+      desc: task.desc,
+      asignado_a: task.asignado_a,
+      estado: newEstado,
+      fa: task.fa || '',
+      fc: task.fc || '',
+      esp: task.esp,
+      obs: task.obs,
+      link: task.link,
+      orden: newOrden
+    })
+  });
+  tasks = tasks.map(t => t.id === id ? updated : t);
 }
 
 async function delTask(id){
@@ -501,7 +600,7 @@ async function cambiarEstado(id, nuevoEstado) {
       body: JSON.stringify({
         tarea: task.tarea,
         desc: task.desc,
-        asig: task.asig,
+        asignado_a: task.asignado_a,
         estado: nuevoEstado,
         fa: task.fa || today(),
         fc,
@@ -518,24 +617,7 @@ async function cambiarEstado(id, nuevoEstado) {
 }
 
 async function updateTaskStatus(id, nuevoEstado) {
-  const task = tasks.find(t => t.id === id);
-  if (!task) return;
-  const fc = nuevoEstado === 'Terminado' && !task.fc ? today() : (nuevoEstado !== 'Terminado' ? '' : task.fc);
-  const updated = await apiRequest(`/tasks/${id}`, {
-    method: 'PUT',
-    body: JSON.stringify({
-      tarea: task.tarea,
-      desc: task.desc,
-      asignado_a: task.asignado_a,
-      estado: nuevoEstado,
-      fa: task.fa || today(),
-      fc,
-      esp: task.esp,
-      obs: task.obs,
-      link: task.link
-    })
-  });
-  tasks = tasks.map(t => t.id === id ? updated : t);
+  await moveTask(id, nuevoEstado, null, null);
 }
 
 function openComments(taskId) {

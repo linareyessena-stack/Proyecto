@@ -11,7 +11,7 @@ npm install
 2. Configura el archivo `.env` con tus credenciales PostgreSQL:
 
 ```env
-PORT=3550
+PORT=3551
 DATABASE_URL=postgresql://postgres:password@localhost:5432/control_actividades
 PGSSL=false
 ```
@@ -29,7 +29,7 @@ psql -d control_actividades -f sql/init.sql
 npm start
 ```
 
-El backend quedará disponible en `http://localhost:3550`.
+El backend quedará disponible en `http://localhost:3551`.
 
 ## Endpoints principales
 
@@ -45,5 +45,5 @@ El backend quedará disponible en `http://localhost:3550`.
 
 ## Notas
 
-- El front-end actual ya está configurado para conectarse al backend en `http://localhost:3550/api`.
+- El front-end actual ya está configurado para conectarse al backend en `http://localhost:3551/api`.
 - Si abres `index.html` con `file://`, el backend debe estar ejecutándose y tendrá que permitir CORS.
