@@ -1,0 +1,35 @@
+version: '3.9'
+
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: control_actividades
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    volumes:
+      - db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  app:
+    build: .
+    restart: unless-stopped
+    ports:
+      - "3551:3551"
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      PORT: 3551
+      DATABASE_URL: postgres://postgres:postgres@db:5432/control_actividades
+      PGSSL: "false"
+    volumes:
+      - .:/usr/src/app:cached
+
+volumes:
+  db_data:
