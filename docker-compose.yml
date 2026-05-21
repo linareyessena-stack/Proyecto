@@ -36,9 +36,5 @@ services:
       PGSSL: "false"
       NODE_ENV: production
 
-    # 🔥 IMPORTANTE: evita conflictos de variables en EasyPanel
-    env_file:
-      - .env
-
 volumes:
   db_data:
