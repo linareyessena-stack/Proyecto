@@ -333,4 +333,28 @@ const ensureSchema = async () => {
     }
     process.exit(1);
   });
+
+  // Graceful shutdown
+  const shutdown = async (signal) => {
+    console.log(`\nRecibido ${signal}. Cerrando servidor...`);
+    server.close(async () => {
+      try {
+        await pool.end();
+        console.log('Pool de base de datos cerrado');
+        process.exit(0);
+      } catch (err) {
+        console.error('Error cerrando pool:', err);
+        process.exit(1);
+      }
+    });
+
+    // Force exit after 10 segundos
+    setTimeout(() => {
+      console.error('No se pudo cerrar gracefully, forzando salida...');
+      process.exit(1);
+    }, 10000);
+  };
+
+  process.on('SIGINT', () => shutdown('SIGINT'));
+  process.on('SIGTERM', () => shutdown('SIGTERM'));
 })();

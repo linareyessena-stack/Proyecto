@@ -27,8 +27,7 @@ async function apiRequest(path, options = {}) {
   if (method === 'GET' || method === 'HEAD') {
     const response = await fetch(API_BASE + path, {
       headers,
-      ...options,
-      body: undefined
+      method: method
     });
     const data = await response.json().catch(() => ({}));
     if (!response.ok) {
@@ -37,14 +36,17 @@ async function apiRequest(path, options = {}) {
     return data;
   }
 
-  const body = options.body ? JSON.parse(options.body) : {};
+  let body = {};
+  if (options.body) {
+    body = typeof options.body === 'string' ? JSON.parse(options.body) : options.body;
+  }
   if (currentUser) {
     body.usuario = currentUser.usuario;
   }
 
   const response = await fetch(API_BASE + path, {
     headers,
-    ...options,
+    method,
     body: JSON.stringify(body)
   });
   const data = await response.json().catch(() => ({}));
@@ -141,7 +143,7 @@ async function doLogin(){
   try {
     const { user } = await apiRequest('/login', {
       method:'POST',
-      body: JSON.stringify({ usuario, pass })
+      body:{usuario,pass}
     });
 
     err.style.display='none';
@@ -156,7 +158,12 @@ async function doLogin(){
     document.getElementById('sbox').style.display = 'inline-block';
 
     await refreshApp();
+    if(pass ==='1234') {
+    alert('Por segurridad debes cambiar tu contraseña inicial.');
+    showChangePwd();
+    }
   } catch (error) {
+    console.error('Error de login:', error);
     err.textContent = error.message.includes('Usuario o contraseña') ? 'Usuario o contraseña incorrectos.' : 'Error de conexión con el servidor.';
     err.style.display='block';
   }
@@ -252,6 +259,7 @@ async function doChangePwd(){
   const nueva=document.getElementById('cp-nueva').value;
   const confirm=document.getElementById('cp-confirm').value;
   const msg=document.getElementById('chpwd-msg');
+
   if(!actual){showMsg(msg,'err','Ingresa tu contraseña actual.');return}
   if(nueva.length<4){showMsg(msg,'err','La nueva contraseña debe tener al menos 4 caracteres.');return}
   if(nueva!==confirm){showMsg(msg,'err','Las contraseñas no coinciden.');return}
@@ -259,7 +267,11 @@ async function doChangePwd(){
   try {
     await apiRequest('/password/change', {
       method:'POST',
-      body: JSON.stringify({ usuario: currentUser.usuario, currentPassword: actual, newPassword: nueva })
+      body: JSON.stringify({ 
+        usuario: currentUser.usuario, 
+        currentPassword: actual,
+         newPassword: nueva 
+        })
     });
 
     users = users.map(u=>u.id===currentUser.id?{...u,pass:nueva}:u);
@@ -388,17 +400,16 @@ function renderBoard(){
         </div>
         ${timestampsHtml}
       `;
-
-      card.addEventListener('dragstart', e => {
-        const canDragStart = currentUser && (currentUser.rol === 'Gerente' || currentUser.id === t.asignado_a);
-        if (!canDragStart) {
-          e.preventDefault();
-          return;
-        }
-        dragId = t.id;
-        setTimeout(() => card.classList.add('dragging'), 0);
-        e.dataTransfer.effectAllowed = 'move';
-      });
+card.addEventListener('dragstart', e => {
+  const canDragStart = currentUser && currentUser.rol === 'Gerente';
+  if (!canDragStart) {
+    e.preventDefault();
+    return;
+  }
+  dragId = t.id;
+  setTimeout(() => card.classList.add('dragging'), 0);
+  e.dataTransfer.effectAllowed = 'move';
+});
       card.addEventListener('dragend', () => {
         dragId = null;
         card.classList.remove('dragging');
