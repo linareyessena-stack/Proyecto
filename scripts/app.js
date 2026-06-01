@@ -394,7 +394,7 @@ function openCreateUser(){
 
 async function agregarUsuario() {
   const msg = document.getElementById('cu-msg');
-  const usuario = document.getElementById('cu-usuario').value.trim();
+  const usuario = document.getElementById('cu-usuario').value.trim().toLowerCase();
   const nombre = document.getElementById('cu-nombre').value.trim();
   const pass = document.getElementById('cu-pass').value;
   const rol = document.getElementById('cu-rol').value;
@@ -416,15 +416,31 @@ async function agregarUsuario() {
   }
 
   try {
-    await apiRequest('/users', {
+    const newUser = await apiRequest('/users', {
       method: 'POST',
       body: JSON.stringify({ usuario, nombre, pass, rol, code })
     });
 
-    alert('¡Usuario creado con éxito!');
-    document.getElementById('mbg-createuser').classList.remove('open');
-    await refreshApp();
-    openUsersPanel();
+    // Agregar el nuevo usuario a la lista (como en addTask)
+    users.push(newUser);
+    populateSelects();
+    
+    // Limpiar formulario
+    document.getElementById('cu-usuario').value='';
+    document.getElementById('cu-nombre').value='';
+    document.getElementById('cu-pass').value='';
+    document.getElementById('cu-rol').value='Ingeniero';
+    document.getElementById('cu-code').value = '';
+    
+    msg.textContent = '✅ Usuario creado exitosamente. Abre el panel de usuarios para verlo.';
+    msg.style.color = '#28a745';
+    msg.style.display = 'block';
+    
+    // Cerrar modal después de 1.5 segundos
+    setTimeout(() => {
+      document.getElementById('mbg-createuser').classList.remove('open');
+      openUsersPanel();
+    }, 1500);
   } catch (error) {
     msg.textContent = error.message || 'Error al crear el usuario.';
     msg.style.display = 'block';

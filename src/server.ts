@@ -164,10 +164,12 @@ app.post(`${API_PREFIX}/users`, authenticate, requireRole('Gerente'), async (req
 
   try {
     const userRepo = AppDataSource.getRepository(User);
-    const existingUser = await userRepo.findOne({ where: { usuario } });
+    const existingUser = await userRepo.findOne({ 
+      where: { usuario: usuario.toLowerCase() } 
+    });
     if (existingUser) return res.status(409).json({ error: 'El usuario ya existe' });
 
-    const newUser = userRepo.create({ usuario, nombre, pass, rol, code });
+    const newUser = userRepo.create({ usuario: usuario.toLowerCase(), nombre, pass, rol, code });
     const result = await userRepo.save(newUser);
 
     res.status(201).json({

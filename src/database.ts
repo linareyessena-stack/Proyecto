@@ -12,7 +12,7 @@ export const AppDataSource = new DataSource({
   password: process.env.DB_PASSWORD || 'Alcaldia2026',
   database: process.env.DB_NAME || 'control_actividades',
   synchronize: false,
-  logging: process.env.NODE_ENV === 'development',
+  logging: ['error', 'warn', 'query', 'info'],
   entities: [User, Task, Comment],
   ssl: process.env.PGSSL === 'true' ? { rejectUnauthorized: false } : false,
 });
