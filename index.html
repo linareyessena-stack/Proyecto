@@ -8,7 +8,6 @@
 </head>
 <body>
 
-<!-- ══ LOGIN ══ -->
 <div id="screen-login">
   <div class="lcard">
     <div class="llogo">📋</div>
@@ -32,7 +31,6 @@
   </div>
 </div>
 
-<!-- ══ FORGOT PASSWORD ══ -->
 <div id="screen-forgot">
   <div class="pcard">
     <h2>🔑 Nueva Contraseña</h2>
@@ -57,7 +55,6 @@
   </div>
 </div>
 
-<!-- ══ APP ══ -->
 <div id="screen-app">
   <div class="hdr">
     <span style="font-size:19px">📋</span>
@@ -75,7 +72,6 @@
   <div class="board" id="board"></div>
 </div>
 
-<!-- ══ CHANGE PASSWORD (inline panel) ══ -->
 <div class="mbg" id="mbg-changepwd" onclick="if(event.target===this)this.classList.remove('open')">
   <div class="modal" style="width:360px">
     <h3>🔒 Cambiar contraseña</h3>
@@ -90,7 +86,6 @@
   </div>
 </div>
 
-<!-- ══ TASK MODAL ══ -->
 <div class="mbg" id="mbg-task" onclick="closeMbg(event)">
   <div class="modal">
     <h3 id="mtitle">Nueva tarea</h3>
@@ -101,15 +96,15 @@
       <select id="fa"><option value="">— Sin asignar —</option></select>
     </div>
     <div class="fr" id="row-est" style="display:none"><label>Estado</label>
-<select id="fe" onchange="chkEspera()">
-  <option>Pendiente</option>
-  <option>Asignada</option>
-  <option>En proceso</option>
-  <option>En espera</option>
-  <option>Validación</option>
-  <option>Terminado</option>
-  <option>Cancelada</option>
-</select>
+      <select id="fe" onchange="chkEspera()">
+        <option>Pendiente</option>
+        <option>Asignada</option>
+        <option>En proceso</option>
+        <option>En espera</option>
+        <option>Validación</option>
+        <option>Terminado</option>
+        <option>Cancelada</option>
+      </select>
     </div>
     <div class="fr" id="row-esp" style="display:none"><label>Motivo de espera *</label>
       <input id="fes" placeholder="¿Por qué está en espera?"/>
@@ -123,35 +118,84 @@
   </div>
 </div>
 
-<!-- ══ USERS PANEL MODAL ══ -->
 <div class="mbg" id="mbg-users" onclick="if(event.target===this)this.classList.remove('open')">
-  <div class="modal" style="width:560px">
-    <h3>👥 Gestión de usuarios</h3>
-    <div style="max-height:420px;overflow-y:auto">
-      <table class="up-table" id="users-table"></table>
+  <div class="modal" style="width:560px; padding: 20px; background: white; border-radius: 8px;">
+    
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; border-bottom: 1px solid #eee; padding-bottom: 0.5rem;">
+      <h3 style="margin: 0; color:#333;">👥 Gestión de usuarios</h3>
+      <button type="button" class="bs" onclick="document.getElementById('mbg-createuser').classList.add('open')" style="margin: 0; padding: 6px 12px; cursor: pointer; background: #28a745; color: white; border: none; border-radius: 4px; font-weight: bold;"> 
+        + Nuevo usuario
+      </button>
     </div>
-    <div class="mbtns"><button class="bc" onclick="document.getElementById('mbg-users').classList.remove('open')">Cerrar</button></div>
+    
+    <div style="max-height:420px; overflow-y:auto; margin-bottom: 1rem;">
+      <table class="up-table" id="users-table" style="width: 100%; border-collapse: collapse;">
+      </table>
+    </div>
+
+    <div class="mbtns" style="text-align: right; margin-top: 1rem; border-top: 1px solid #eee; padding-top: 0.5rem;">
+      <button type="button" class="bc" onclick="document.getElementById('mbg-users').classList.remove('open')">Cerrar</button>
+    </div>
   </div>
 </div>
 
-<!-- ══ EDIT USER MODAL ══ -->
+<div class="mbg" id="mbg-createuser" onclick="if(event.target===this)this.classList.remove('open')">
+  <div class="modal" style="width:360px">
+    <h3>👤 Agregar Nuevo Usuario</h3>
+    <div class="pmsg" id="cu-msg" style="color:red; font-size:14px; margin-bottom:10px;"></div>
+    
+    <div class="fr">
+      <label>Usuario *</label>
+      <input id="cu-usuario" placeholder="ej: jgonzalez"/>
+    </div>
+    
+    <div class="fr">
+      <label>Nombre completo *</label>
+      <input id="cu-nombre" placeholder="ej: Juan González"/>
+    </div>
+    
+    <div class="fr">
+      <label>Contraseña *</label>
+      <input type="password" id="cu-pass" placeholder="••••••••"/>
+    </div>
+
+    <div class="fr">
+      <label>Rol *</label>
+      <select id="cu-rol" name="rol" required>
+        <option value="Gerente">Gerente</option>
+        <option value="Ingeniero">Ingeniero</option>
+        <option value="Planta">Persona de planta</option>
+      </select>
+    </div>
+
+    <div class="fr">
+      <label>Código de recuperación (6 dígitos) *</label>
+      <input id="cu-code" placeholder="ej: 123456" maxlength="6"/>
+    </div>
+    
+    <div class="mbtns">
+      <button class="bc" onclick="document.getElementById('mbg-createuser').classList.remove('open')">Cancelar</button>
+      <button class="bs" onclick="agregarUsuario()">Guardar Usuario</button>
+    </div>
+  </div>
+</div>
+
 <div class="mbg" id="mbg-edituser" onclick="if(event.target===this)this.classList.remove('open')">
   <div class="modal" style="width:360px">
     <h3 id="eu-title">Editar usuario</h3>
     <input type="hidden" id="eu-id"/>
-    <input type="hidden" id="eu-usuario"/>
+    <div class="fr"><label>Usuario</label><input id="eu-usuario" placeholder="Usuario"/></div>
     <div class="fr"><label>Nombre completo</label><input id="eu-nombre" placeholder="Nombre"/></div>
     <div class="fr"><label>Nueva contraseña (dejar vacío para no cambiar)</label>
       <input type="password" id="eu-pass" placeholder="••••••••"/></div>
 
-
-      <div class="fr"><label>Rol</label>
-  <select id="eu-rol">
-    <option value="Ingeniero">Ingeniero</option>
-    <option value="Gerente">Gerente</option>
-  </select>
-</div>
-
+    <div class="fr"><label>Rol</label>
+      <select id="eu-rol">
+        <option value="Gerente">Gerente</option>
+        <option value="Ingeniero">Ingeniero</option>
+        <option value="Planta">Persona de planta</option>
+      </select>
+    </div>
 
     <div class="fr"><label>Código de recuperación (6 dígitos)</label>
       <input id="eu-code" placeholder="ej: 123456" maxlength="6"/>
@@ -163,7 +207,6 @@
   </div>
 </div>
 
-<!-- ══ COMMENTS MODAL ══ -->
 <div class="mbg" id="mbg-comments" onclick="if(event.target===this)this.classList.remove('open')">
   <div class="modal" style="width:500px">
     <h3>Comentarios de la tarea</h3>
@@ -178,5 +221,6 @@
 </div>
 
 <script src="scripts/app.js"></script>
+
 </body>
 </html>

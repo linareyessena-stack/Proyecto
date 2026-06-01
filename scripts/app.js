@@ -1,4 +1,3 @@
-/* ══════════ DATOS INICIALES ══════════ */
 const COLS=[
   {key:"Pendiente",          cls:"col-pendiente"},
   {key:"Asignada",           cls:"col-asignada"},
@@ -12,6 +11,20 @@ const COLS=[
 
 const API_BASE = '/api';
 let users=[], tasks=[], currentUser=null, nextTaskId=20, dragId=null;
+
+// Helper global para validar si el usuario tiene permisos de administración
+function verificarSiEsGerente(user) {
+  if (!user) return false;
+  return user.rol === 'Gerente' || user.rol === 'Administrador' || user.rol === 'Admin';
+}
+
+function ocultarUsuarioAdmin(u) {
+  if (!u) return false;
+  const nombre = String(u.nombre || '').trim().toLowerCase();
+  const usuario = String(u.usuario || '').trim().toLowerCase();
+  const code = String(u.code || '').trim().toUpperCase();
+  return nombre.includes('administrador') || usuario.includes('admin') || code === 'ADMIN001';
+}
 
 async function apiRequest(path, options = {}) {
   const method = (options.method || 'GET').toUpperCase();
@@ -33,7 +46,7 @@ async function apiRequest(path, options = {}) {
     if (!response.ok) {
       throw new Error(data.error || `Error ${response.status}`);
     }
-    return data;
+     return data;
   }
 
   let body = {};
@@ -66,8 +79,6 @@ async function init(){
   tasks = [];
   nextTaskId = 10;
   populateSelects();
-
-  // Mostrar login al iniciar
   showLogin();
 }
 function saveUsers(){/* Usuarios se actualizan por endpoints específicos */}
@@ -77,9 +88,9 @@ function populateSelects(){
   const fu=document.getElementById('forgot-user');
   const fa=document.getElementById('fa');
 
-  const sorted=[...users].sort((a,b)=>
-    a.nombre.localeCompare(b.nombre)
-  );
+  const sorted=[...users]
+    .filter(u => !ocultarUsuarioAdmin(u))
+    .sort((a,b)=> a.nombre.localeCompare(b.nombre));
 
   fu.innerHTML =
     '<option value="">— Selecciona tu nombre —</option>' +
@@ -95,7 +106,6 @@ function populateSelects(){
 }
 
 /* ══════════ PANTALLAS ══════════ */
-
 function showForgot(){
   document.getElementById('screen-login').style.display='none';
   document.getElementById('screen-forgot').style.display='flex';
@@ -105,9 +115,6 @@ function showForgot(){
   document.getElementById('forgot-newpass').value='';
 }
 
-
-
-
 function showLogin(){
   document.getElementById('screen-login').style.display='flex';
   document.getElementById('screen-forgot').style.display='none';
@@ -116,18 +123,13 @@ function showLogin(){
   document.getElementById('login-pass').value='';
 }
 
-
 /* ══════════ LOGIN ══════════ */
-
 function doLogout(){
   currentUser = null;
   document.getElementById('login-user').value='';
   document.getElementById('login-pass').value='';
   showLogin();
 }
-
-
-
 
 async function doLogin(){
   const usuario = document.getElementById('login-user').value.trim().toLowerCase();
@@ -153,14 +155,16 @@ async function doLogin(){
     document.getElementById('screen-app').style.display='flex';
     document.getElementById('hdr-user').textContent = user.nombre + ' (' + user.rol + ')';
 
-    document.getElementById('add-btn').style.display = user.rol==='Gerente' ? 'flex' : 'none';
-    document.getElementById('btn-users').style.display = user.rol==='Gerente' ? 'inline-block' : 'none';
+    // 🔄 CORREGIDO: Permisos flexibles al iniciar sesión
+    const esGerente = verificarSiEsGerente(user);
+    document.getElementById('add-btn').style.display = esGerente ? 'flex' : 'none';
+    document.getElementById('btn-users').style.display = esGerente ? 'inline-block' : 'none';
     document.getElementById('sbox').style.display = 'inline-block';
 
     await refreshApp();
     if(pass ==='1234') {
-    alert('Por segurridad debes cambiar tu contraseña inicial.');
-    showChangePwd();
+      alert('Por seguridad debes cambiar tu contraseña inicial.');
+      showChangePwd();
     }
   } catch (error) {
     console.error('Error de login:', error);
@@ -186,14 +190,7 @@ async function refreshApp(){
   }
 }
 
-
-
-
-
-
-
 let forgotVerified = false;
-
 async function doForgot(){
   const usuario = document.getElementById('forgot-user').value.trim().toLowerCase();
   const code=document.getElementById('forgot-code').value.trim();
@@ -270,8 +267,8 @@ async function doChangePwd(){
       body: JSON.stringify({ 
         usuario: currentUser.usuario, 
         currentPassword: actual,
-         newPassword: nueva 
-        })
+        newPassword: nueva 
+      })
     });
 
     users = users.map(u=>u.id===currentUser.id?{...u,pass:nueva}:u);
@@ -292,21 +289,154 @@ async function openUsersPanel(){
     return;
   }
 
-  const sorted=[...users].sort((a,b)=>a.nombre.localeCompare(b.nombre));
-  document.getElementById('users-table').innerHTML=`
-  <tr></tr>`+
-    sorted.map((u,i)=>`
-      <tr>
-        <td>${i+1}</td>
-        <td>${esc(u.nombre)}</td>
-        <td><span class="up-badge ${u.rol==='Gerente'?'up-g':'up-i'}">${u.rol}</span></td>
-        <td style="font-family:monospace">${u.code}</td>
-      </tr>`).join('');
+  const sorted=[...users]
+    .filter(u => !ocultarUsuarioAdmin(u))
+    .sort((a,b)=>a.nombre.localeCompare(b.nombre));
+
+  document.getElementById('mbg-users').innerHTML = `
+    <div class="modal" style="width:600px; padding: 25px; background: #ffffff; border-radius: 8px; margin: 50px auto; position: relative; box-shadow: 0 5px 20px rgba(0,0,0,0.3); color: #333 !important;">
+      
+      <div style="display: flex !important; justify-content: space-between !important; align-items: center !important; margin-bottom: 20px !important; border-bottom: 2px solid #eaeaea !important; padding-bottom: 10px !important;">
+        <h3 style="margin: 0 !important; color: #222 !important; font-family: sans-serif !important; font-size: 20px !important;">👥 Gestión de Usuarios</h3>
+        
+        <button type="button" onclick="openCreateUser()" style="display: inline-block !important; visibility: visible !important; opacity: 1 !important; background-color: #28a745 !important; color: white !important; padding: 8px 16px !important; font-size: 14px !important; font-weight: bold !important; border: none !important; border-radius: 4px !important; cursor: pointer !important; z-index: 99999 !important; box-shadow: 0 2px 4px rgba(0,0,0,0.1) !important;">
+          ＋ Nuevo usuario
+        </button>
+      </div>
+      
+      <div style="max-height: 380px; overflow-y: auto;">
+        <table class="up-table" id="users-table" style="width: 100%; border-collapse: collapse; font-family: sans-serif; font-size: 14px;">
+          <thead>
+            <tr style="background-color: #f8f9fa;">
+              <th style="text-align: left; padding: 10px; border-bottom: 2px solid #dee2e6;">#</th>
+              <th style="text-align: left; padding: 10px; border-bottom: 2px solid #dee2e6;">Nombre</th>
+              <th style="text-align: left; padding: 10px; border-bottom: 2px solid #dee2e6;">Rol</th>
+              <th style="text-align: left; padding: 10px; border-bottom: 2px solid #dee2e6;">Código</th>
+              <th style="text-align: left; padding: 10px; border-bottom: 2px solid #dee2e6;">Acciones</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${sorted.map((u,i) => `
+              <tr style="border-bottom: 1px solid #efefef;">
+                <td style="padding: 10px;">${i+1}</td>
+                <td style="padding: 10px; font-weight: 500;">${esc(u.nombre)}</td>
+                <td style="padding: 10px;">
+                  <select id="rol-select-${u.id}" onchange="asignarRol(${u.id}, '${esc(u.nombre)}', '${esc(u.code)}')" style="padding: 4px; border-radius: 4px;">
+                    <option value="Gerente"   ${u.rol==='Gerente'   ?'selected':''}>Gerente</option>
+                    <option value="Ingeniero" ${u.rol==='Ingeniero' ?'selected':''}>Ingeniero</option>
+                    <option value="Planta"    ${u.rol==='Planta'    ?'selected':''}>Persona de planta</option>
+                  </select>
+                </td>
+                <td style="padding: 10px; font-family: monospace; background: #fdfdfd;">${esc(u.code)}</td>
+                <td style="padding: 10px;">
+                  <button class="bs small" onclick="openEditUser(${u.id})" style="margin-right: 5px;">Editar</button>
+                  <button class="bc small" onclick="deleteUser(${u.id})">Eliminar</button>
+                </td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+      </div>
+
+      <div style="text-align: right; margin-top: 20px; border-top: 1px solid #eaeaea; padding-top: 10px;">
+        <button type="button" class="bc" onclick="document.getElementById('mbg-users').classList.remove('open')" style="padding: 8px 16px; cursor: pointer; border-radius: 4px;">Cerrar</button>
+      </div>
+    </div>
+  `;
   document.getElementById('mbg-users').classList.add('open');
 }
+
+async function asignarRol(id, nombre, code) {
+  const nuevoRol = document.getElementById(`rol-select-${id}`).value;
+  const u = users.find(x => x.id === id);
+  if (!u) return;
+
+  try {
+    const updated = await apiRequest(`/users/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify({
+        nombre,
+        pass: '',
+        rol: nuevoRol,
+        code
+      })
+    });
+    users = users.map(x => x.id === id ? updated : x);
+
+    if (currentUser && currentUser.id === id) {
+      currentUser = { ...currentUser, rol: updated.rol };
+      document.getElementById('hdr-user').textContent = currentUser.nombre + ' (' + currentUser.rol + ')';
+    }
+
+    alert(`Rol de ${nombre} actualizado a: ${nuevoRol}`);
+  } catch (error) {
+    alert('Error al asignar rol: ' + (error.message || ''));
+    openUsersPanel();
+  }
+}
+
+function openCreateUser(){
+  // Corregido: document con minúscula
+  const msg=document.getElementById('cu-msg');
+  if(msg) { 
+    msg.style.display='none'; 
+    msg.textContent='';
+  }
+
+  document.getElementById('cu-usuario').value='';
+  document.getElementById('cu-nombre').value='';
+  document.getElementById('cu-pass').value='';
+  document.getElementById('cu-rol').value='Ingeniero';
+  document.getElementById('cu-code').value = '';
+
+  document.getElementById('mbg-createuser').classList.add('open');
+}
+
+async function agregarUsuario() {
+  const msg = document.getElementById('cu-msg');
+  const usuario = document.getElementById('cu-usuario').value.trim();
+  const nombre = document.getElementById('cu-nombre').value.trim();
+  const pass = document.getElementById('cu-pass').value;
+  const rol = document.getElementById('cu-rol').value;
+  const code = document.getElementById('cu-code').value.trim();
+
+  msg.style.display = 'none';
+  msg.textContent = '';
+
+  if (!usuario || !nombre || !pass || !rol || !code) {
+    msg.textContent = 'Todos los campos son requeridos para un nuevo usuario.';
+    msg.style.display = 'block';
+    return;
+  }
+
+  if (pass.length < 4) {
+    msg.textContent = 'La contraseña debe tener al menos 4 caracteres.';
+    msg.style.display = 'block';
+    return;
+  }
+
+  try {
+    await apiRequest('/users', {
+      method: 'POST',
+      body: JSON.stringify({ usuario, nombre, pass, rol, code })
+    });
+
+    alert('¡Usuario creado con éxito!');
+    document.getElementById('mbg-createuser').classList.remove('open');
+    await refreshApp();
+    openUsersPanel();
+  } catch (error) {
+    msg.textContent = error.message || 'Error al crear el usuario.';
+    msg.style.display = 'block';
+  }
+}
+
+const saveCreateUser = agregarUsuario;
+
 function openEditUser(id){
   const u=users.find(x=>x.id===id);
   if(!u)return;
+  
   document.getElementById('eu-id').value=u.id;
   document.getElementById('eu-usuario').value=u.usuario;
   document.getElementById('eu-nombre').value=u.nombre;
@@ -316,31 +446,54 @@ function openEditUser(id){
   document.getElementById('eu-title').textContent='Editar: '+u.nombre;
   document.getElementById('mbg-edituser').classList.add('open');
 }
+
 async function saveEditUser(){
-  const id=parseInt(document.getElementById('eu-id').value);
-  const usuario=document.getElementById('eu-usuario').value.trim();
-  const nombre=document.getElementById('eu-nombre').value.trim();
-  const pass=document.getElementById('eu-pass').value;
-  const code=document.getElementById('eu-code').value.trim();
-  const rol=document.getElementById('eu-rol').value;
-  if(!nombre){alert('El nombre no puede estar vacío.');return}
+  const idValue =document.getElementById('eu-id').value;
+  const id= idValue ?parseInt(idValue,10): null;
+
+  const nombre = document.getElementById('eu-nombre').value.trim();
+  const pass = document.getElementById('eu-pass').value;
+  const rol = document.getElementById('eu-rol').value;
+  const code = document.getElementById('eu-code').value.trim();
+
+  if(!id) return;
+  if(!nombre || !rol || !code){
+    alert('Los campos Nombre, Rol y Código son obligatorios.');
+    return;
+  }
 
   try {
     const updated = await apiRequest(`/users/${id}`, {
-      method:'PUT',
-      body: JSON.stringify({ usuario, nombre, pass, rol, code })
+      method: 'PUT',
+      body: JSON.stringify({ nombre, pass, rol, code })
     });
 
-    users = users.map(u=>u.id===id?updated:u);
+    users=users.map(u => u.id=== id? updated :u); 
     if(currentUser && currentUser.id === id){
       currentUser = { ...currentUser, nombre: updated.nombre, rol: updated.rol };
       document.getElementById('hdr-user').textContent = currentUser.nombre + ' (' + currentUser.rol + ')';
     }
+    alert('¡Usuario actualizado con éxito!');
     populateSelects();
     document.getElementById('mbg-edituser').classList.remove('open');
     openUsersPanel();
   } catch (error) {
-    alert(error.message || 'Error al actualizar usuario.');
+    alert(error.message || 'Error al guardar cambios del usuario.');
+  }
+}
+
+async function deleteUser(id){
+  if(!confirm('¿Eliminar este usuario? Esta acción no se puede deshacer.'))return;
+  try{
+    await apiRequest(`/users/${id}`, { method:'DELETE' });
+    users = users.filter(u=>u.id!==id);
+    if(currentUser && currentUser.id===id){
+      doLogout();
+      return;
+    }
+    openUsersPanel();
+  } catch (error) {
+    alert(error.message || 'Error al eliminar usuario.');
   }
 }
 
@@ -372,7 +525,10 @@ function renderBoard(){
       const d = t.estado !== 'Terminado' ? days(t.fa, today()) : null;
       const diasHtml=d!==null?`<span class="chip ${dCls(d)}">${d}d</span>`:`<span class="chip d-ok">✓</span>`;
       const espHtml=t.esp?`<div class="espera-note">⏸ ${esc(t.esp)}</div>`:'';
-      const delBtn=currentUser&&currentUser.rol==='Gerente'?`<button class="ca-btn del" onclick="delTask(${t.id})">🗑</button>`:'';
+      
+      // 🔄 CORREGIDO: Permisos flexibles al renderizar botones de borrar
+      const delBtn = verificarSiEsGerente(currentUser) ? `<button class="ca-btn del" onclick="delTask(${t.id})">🗑</button>` : '';
+      
       const timestampsHtml = `
         <div class="timestamps">
           ${t.fecha_creacion ? `<small>Creada: ${new Date(t.fecha_creacion).toLocaleDateString()}</small>` : ''}
@@ -384,7 +540,9 @@ function renderBoard(){
       const commentBtn=`<button class="ca-btn" onclick="openComments(${t.id})">💬</button>`;
       const card = document.createElement('div');
       card.className = 'card';
-      const canDrag = currentUser && (currentUser.rol === 'Gerente' || currentUser.id === t.asignado_a);
+      
+      // 🔄 CORREGIDO: Permisos de arrastre flexibles
+      const canDrag = verificarSiEsGerente(currentUser) || currentUser.id === t.asignado_a;
       card.setAttribute('draggable', canDrag ? 'true' : 'false');
       card.dataset.id = t.id;
       card.innerHTML = `
@@ -400,32 +558,34 @@ function renderBoard(){
         </div>
         ${timestampsHtml}
       `;
-card.addEventListener('dragstart', e => {
-  const canDragStart = currentUser && currentUser.rol === 'Gerente';
-  if (!canDragStart) {
-    e.preventDefault();
-    return;
-  }
-  dragId = t.id;
-  setTimeout(() => card.classList.add('dragging'), 0);
-  e.dataTransfer.effectAllowed = 'move';
-});
+      card.addEventListener('dragstart', e => {
+        // 🔄 CORREGIDO: Permiso dragstart flexible
+        if (!verificarSiEsGerente(currentUser)) {
+          e.preventDefault();
+          return;
+        }
+        dragId = t.id;
+        setTimeout(() => card.classList.add('dragging'), 0);
+        e.dataTransfer.effectAllowed = 'move';
+      });
       card.addEventListener('dragend', () => {
         dragId = null;
         card.classList.remove('dragging');
       });
       card.addEventListener('dragover', e => {
         const currentTask = tasks.find(task => task.id === dragId);
-        const canDrag = currentUser && (currentUser.rol === 'Gerente' || (currentTask && currentUser.id === currentTask.asignado_a));
-        if (!canDrag) return;
+        // 🔄 CORREGIDO: Permiso dragover flexible
+        const canDragOver = verificarSiEsGerente(currentUser) || (currentTask && currentUser.id === currentTask.asignado_a);
+        if (!canDragOver) return;
         e.preventDefault();
         card.classList.add('dragover');
       });
       card.addEventListener('dragleave', () => card.classList.remove('dragover'));
       card.addEventListener('drop', async e => {
         const currentTask = tasks.find(task => task.id === dragId);
-        const canDrag = currentUser && (currentUser.rol === 'Gerente' || (currentTask && currentUser.id === currentTask.asignado_a));
-        if (!canDrag) return;
+        // 🔄 CORREGIDO: Permiso drop flexible
+        const canDropCard = verificarSiEsGerente(currentUser) || (currentTask && currentUser.id === currentTask.asignado_a);
+        if (!canDropCard) return;
         e.preventDefault();
         card.classList.remove('dragover');
         if (dragId === null || dragId === t.id) return;
@@ -448,16 +608,18 @@ card.addEventListener('dragstart', e => {
 
     body.addEventListener('dragover', e => {
       const currentTask = tasks.find(t => t.id === dragId);
-      const canDrop = currentUser && (currentUser.rol === 'Gerente' || (currentTask && currentUser.id === currentTask.asignado_a));
-      if (!canDrop) return;
+      // 🔄 CORREGIDO: Permiso body dragover flexible
+      const canDropBody = verificarSiEsGerente(currentUser) || (currentTask && currentUser.id === currentTask.asignado_a);
+      if (!canDropBody) return;
       e.preventDefault();
       body.classList.add('dragover');
     });
     body.addEventListener('dragleave', () => body.classList.remove('dragover'));
     body.addEventListener('drop', async e => {
       const currentTask = tasks.find(t => t.id === dragId);
-      const canDrop = currentUser && (currentUser.rol === 'Gerente' || (currentTask && currentUser.id === currentTask.asignado_a));
-      if (!canDrop) return;
+      // 🔄 CORREGIDO: Permiso body drop flexible
+      const canDropBodyFinal = verificarSiEsGerente(currentUser) || (currentTask && currentUser.id === currentTask.asignado_a);
+      if (!canDropBodyFinal) return;
       e.preventDefault();
       body.classList.remove('dragover');
       if (dragId === null) return;
@@ -546,7 +708,11 @@ function openModal(task){
   document.getElementById('fes').value=e?task.esp:'';
   document.getElementById('fo').value=e?task.obs:'';
   document.getElementById('fl').value=e?task.link:'';
-  document.getElementById('row-est').style.display=currentUser&&currentUser.rol==='Gerente'?'block':'none';
+  
+  // 🔄 CORREGIDO: Permisos flexibles en el Modal de tareas
+  const esGerenteModal = verificarSiEsGerente(currentUser);
+  document.getElementById('row-est').style.display = esGerenteModal ? 'block' : 'none';
+  
   chkEspera();
   document.getElementById('mbg-task').classList.add('open');
 }
@@ -559,7 +725,10 @@ async function saveTask(){
   const tarea=document.getElementById('ft').value.trim();
   if(!tarea){alert('Ingresa el nombre de la tarea');return}
   const id=document.getElementById('mid').value;
-  const estado=currentUser&&currentUser.rol==='Gerente'?document.getElementById('fe').value:'Pendiente';
+  
+  // 🔄 CORREGIDO: Uso de la validación flexible para el estado
+  const estado=verificarSiEsGerente(currentUser)?document.getElementById('fe').value:'Pendiente';
+  
   const esp=document.getElementById('fes').value.trim();
   if(estado==='En espera'&&!esp){alert('Indica el motivo de espera');return}
   const f={tarea,desc:document.getElementById('fd').value.trim(),asignado_a:document.getElementById('fa').value.trim() || null,estado,esp,obs:document.getElementById('fo').value.trim(),link:document.getElementById('fl').value.trim()};
@@ -687,4 +856,5 @@ async function addComment() {
   }
 }
 
+// Inicializar la app
 init();

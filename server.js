@@ -102,34 +102,93 @@ app.post(`${API_PREFIX}/password/forgot`, async (req, res) => {
   }
 });
 
-app.get(`${API_PREFIX}/users`, async (req, res) => {
-    try{
-    const result = await pool.query(`SELECT id,usuario,nombre,rol,code FROM users ORDER BY nombre`);
-    res.json(result.rows);
-    } catch (error) {
-      console.error(error);
-      res.status(500).json({error:'Error interno del servidor'});
-  }
-  });
-  app.put(`${API_PREFIX}/users/:id`, authenticate, requireRole('Gerente'), async (req, res) => {
-    const id = parseInt(req.params.id, 10);
-    const { usuario, nombre, pass, rol, code } = req.body;
-    if (!nombre || !rol || !code)
-      return res.status(400).json({ error: 'nombre, rol y código requeridos' });
+
+  app.get(`${API_PREFIX}/users`, authenticate, requireRole('Gerente'), async (req, res) => {
     try {
       const result = await pool.query(
-        `UPDATE users
-         SET usuario = COALESCE(NULLIF($1, ''), usuario),
-             pass = COALESCE(NULLIF($2, ''), pass),
-             nombre = $3,
-             rol = $4,
-             code = $5,
-             updated_at = NOW()
-         WHERE id = $6
-         RETURNING id, usuario, nombre, rol, code`,
-        [usuario, pass, nombre, rol, code, id]
+        `SELECT id, usuario, nombre, rol, code
+         FROM users
+         ORDER BY nombre`
       );
+      res.json(result.rows);
+    } catch (error) {
+      console.error(error);
+      res.status(500).json({ error: 'Error interno del servidor' });
+    }
+  });
+
+  app.post(`${API_PREFIX}/users`, authenticate, requireRole('Gerente'), async (req, res) => {
+    let { usuario, nombre, pass, rol, code } = req.body;
+    
+    usuario = usuario ? String(usuario).trim().toLowerCase() : '';
+    nombre = String(nombre || '').trim();
+    pass = pass ? String(pass).trim() : '';
+    
+    if (!usuario || !nombre || !pass || !rol || !code)
+      return res.status(400).json({ error: 'usuario, nombre, contraseña, rol y código requeridos' });
+
+    try {
+      // Verificar si el usuario ya existe (case-insensitive)
+      const check = await pool.query('SELECT id FROM users WHERE LOWER(usuario) = LOWER($1)', [usuario]);
+      if (check.rowCount > 0) 
+        return res.status(409).json({ error: 'El usuario ya existe' });
+
+      const result = await pool.query(
+        `INSERT INTO users (usuario, nombre, pass, rol, code, created_at, updated_at)
+         VALUES ($1, $2, $3, $4, $5, NOW(), NOW())
+         RETURNING id, usuario, nombre, rol, code`,
+        [usuario, nombre, pass, rol, code]
+      );
+      res.status(201).json(result.rows[0]);
+    } catch (error) {
+      console.error(error);
+      if (error.code === '23505') return res.status(409).json({ error: 'El usuario ya existe' });
+      res.status(500).json({ error: 'Error interno del servidor' });
+    }
+  });
+
+  app.delete(`${API_PREFIX}/users/:id`, authenticate, requireRole('Gerente'), async (req, res) => {
+    const id = parseInt(req.params.id, 10);
+    try {
+      const result = await pool.query('DELETE FROM users WHERE id = $1', [id]);
       if (result.rowCount === 0) return res.status(404).json({ error: 'Usuario no encontrado' });
+      res.json({ success: true });
+    } catch (error) {
+      console.error(error);
+      res.status(500).json({ error: 'Error interno del servidor' });
+    }
+  });
+
+  app.put(`${API_PREFIX}/users/:id`, authenticate, requireRole('Gerente'), async (req, res) => {
+    const id = parseInt(req.params.id, 10);
+    let { nombre, pass, rol, code } = req.body;
+    
+    // Normalizar campos
+    pass = pass && String(pass).trim() ? String(pass).trim() : null;
+    nombre = String(nombre || '').trim();
+    
+    if (!nombre || !rol || !code)
+      return res.status(400).json({ error: 'nombre, rol y código requeridos' });
+    
+    try {
+      // Obtener pass actual si no se proporciona uno nuevo
+      const current = await pool.query('SELECT pass FROM users WHERE id = $1', [id]);
+      if (current.rowCount === 0) return res.status(404).json({ error: 'Usuario no encontrado' });
+      
+      const finalPass = pass || current.rows[0].pass;
+      
+      const result = await pool.query(
+        `UPDATE users
+         SET pass = $1,
+             nombre = $2,
+             rol = $3,
+             code = $4,
+             updated_at = NOW()
+         WHERE id = $5
+         RETURNING id, usuario, nombre, rol, code`,
+        [finalPass, nombre, rol, code, id]
+      );
+      
       res.json(result.rows[0]);
     } catch (error) {
       console.error(error);
